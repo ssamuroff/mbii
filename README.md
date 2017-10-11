@@ -38,13 +38,12 @@ Omega_baryon = 0.046
 h=0.701
 
 
-+==================
-+
-+  KNOWN PROBLEMS
-+  The old (before Sep 17 2013) band filters were off by a factor of wavelength
-+  do not use them
-+
-+================
+==================
+
+KNOWN PROBLEMS
++  The old (before Sep 17 2013) band filters were off by a factor of wavelength -- do not use them
+
+================
 
 
 Data model: 
