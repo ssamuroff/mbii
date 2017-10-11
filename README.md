@@ -26,10 +26,15 @@ the data in python.
 Cosmology:
 
 n_s=0.968
+
 sigma_8=0.816
+
 Omega_Lambda = 0.725
+
 Omega_m= 0.275
+
 Omega_baryon = 0.046
+
 h=0.701
 
 
