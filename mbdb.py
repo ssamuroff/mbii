@@ -1,9 +1,15 @@
-import MySQLdb as mdb
+#import MySQLdb as mdb
+import pymysql as mdb
 import numpy as np
 from numpy.core.records import fromarrays
 import pylab as plt
 import treecorr
+#import tools.plots as pl
 plt.switch_backend('pdf')
+import halotools as ht
+import halotools.mock_observables as pretending
+import mbii.lego_tools as util
+import mbii.basic_simulation_info as info
 #plt.style.use('y1a1')
 
 
@@ -93,15 +99,84 @@ class mbdb(object):
 
 
 class groups(mbdb):
-    def __init__(self, snapshot=85):
+    def __init__(self, snapshot=85, info=None):
         super(groups, self).__init__()
 
         print "Will load group data for snapshot %d"%(snapshot)
         self.snapshot=snapshot
+        self.Lbox = 100 * 1e3
+
+        if info is not None:
+        	self.info = info
 
         #info = self.get(table='subfind_halos' , fields='groupId', cond='subfind_halos.snapnum = %d'%(self.snapshot))
         #self.groups = np.unique(info['groupId'])
         return None
+
+    def _get_corrs_nosep(self, data, min_sep=44, max_sep=1e6, binning='log', nbins=20, ctype=('s','s'), estimator='Landy-Szalay', verbosity=1):
+
+    	if verbosity>0:
+    		print 'Will construct %s - %s correlation functions'%ctype
+    		print 'Using %s estimator'%estimator
+
+    	# Decide on an appropriate binning scheme
+    	if (binning.lower()=='log'):
+    		rbins = np.logspace(np.log10(min_sep), np.log10(max_sep), nbins )
+    	elif (binning.lower()=='linear'):
+    		rbins = np.linspace(min_sep, max_sep, nbins )
+
+    	if verbosity>1:
+    		print 'Will use %s binning:'%binning, rbins
+
+    	# Parse the mask
+    	mask1 = util.choose_cs_mask(data,ctype[0])
+    	mask2 = util.choose_cs_mask(data,ctype[1])
+
+    	pos1 = pretending.return_xyz_formatted_array(data['x'], data['y'], data['z'], mask = mask1)
+    	pos2 = pretending.return_xyz_formatted_array(data['x'], data['y'], data['z'], mask = mask2)
+
+    	# And do the randoms
+    	r1 = util.construct_random_cat(data, mask=mask1)
+    	r2 = util.construct_random_cat(data, mask=mask2)
+
+    	R = np.sqrt(np.array(rbins)[1:]*np.array(rbins)[:-1]) 
+
+    	return R, pretending.tpcf(pos1, rbins, sample2=pos2, randoms=r1, period=info.Lbox, estimator=estimator )
+
+
+    def _get_corrs(self, data, min_sep=44, max_sep=1e6, binning='log', nbins=20, ctype=('s','s'), estimator='Landy-Szalay', verbosity=1, fran=1):
+
+    	if verbosity>0:
+    		print 'Will construct %s - %s correlation functions'%ctype
+    		print 'Using %s estimator'%estimator
+
+    	# Decide on an appropriate binning scheme
+    	if (binning.lower()=='log'):
+    		rbins = np.logspace(np.log10(min_sep), np.log10(max_sep), nbins )
+    	elif (binning.lower()=='linear'):
+    		rbins = np.linspace(min_sep, max_sep, nbins )
+
+    	if verbosity>1:
+    		print 'Will use %s binning:'%binning, rbins
+
+    	# Parse the mask
+    	mask1 = util.choose_cs_mask(data,ctype[0])
+    	mask2 = util.choose_cs_mask(data,ctype[1])
+
+    	pos1 = pretending.return_xyz_formatted_array(data['x'], data['y'], data['z'], mask = mask1)
+    	pos2 = pretending.return_xyz_formatted_array(data['x'], data['y'], data['z'], mask = mask2)
+
+    	# And do the randoms
+    	r1 = util.construct_random_cat(data, mask=mask1, f=fran)
+    	r2 = util.construct_random_cat(data, mask=mask2, f=fran)
+
+    	R = np.sqrt(np.array(rbins)[1:]*np.array(rbins)[:-1]) 
+
+    	return R, pretending.tpcf_one_two_halo_decomp(pos1, data['groupId'][mask1], rbins, sample2=pos2,  sample2_host_halo_id=data['groupId'][mask2], randoms=r1, period=self.Lbox, estimator=estimator )
+
+    	#return rbins, xi_1h_11, xi_2h_11, xi_1h_12, xi_2h_12, xi_1h_22, xi_2h_22
+
+
 
     def get_tomographic_xigg(self, i, j, nbins=8):
         # Define some bins in Rpar
@@ -123,17 +198,7 @@ class groups(mbdb):
 
         return Rpar, rvec, vec
 
-#    def make_contours(self, R, xi_grid):
-#        Pi = 
-#        xx,yy = np.meshgrid()
-#C = plt.contour(Pi,xx.T,res, 8, colors='purple',linestyles='-', linewidth=.5)
-#
-
-
-
     def calc_xi_perp(self, data1, data2,  min_rpar, max_rpar, nbins=20, slop=0.1, randoms=True):
-
-
         # Build a catalogue of random points drawn from the same volume
         rx = np.random.random(size=data1['x'].size) * (data1['x'].max()-data1['x'].min()) + data1['x'].mean()
         ry = np.random.random(size=data1['x'].size) * (data1['y'].max()-data1['y'].min()) + data1['y'].mean()
@@ -162,6 +227,31 @@ class groups(mbdb):
         werr = np.sqrt(werr)
 
         return R, w, werr
+
+    def correlate_all(self, data1, data2, pair=('c','s'), halos=2, nbins=20, slop=0.1, min_sep=44, max_sep=6e3):
+
+        #mask1 = (data1['central']==int(pair[0]=='c'))
+        #mask2 = (data2['central']==int(pair[1]=='c'))
+
+        rx_j = (np.random.random(size=data2['x'].size) - 0.5)* (data2['x'].max()-data2['x'].min()) + data2['x'].mean()
+        ry_j = (np.random.random(size=data2['x'].size) - 0.5)* (data2['y'].max()-data2['y'].min()) + data2['y'].mean()
+        rz_j = (np.random.random(size=data2['x'].size) - 0.5)* (data2['z'].max()-data2['z'].min()) + data2['z'].mean()
+        rancat_i  = treecorr.Catalog(x=rx_j, y=ry_j, z=rz_j)
+
+        rx_i = (np.random.random(size=data1['x'].size) - 0.5) * (data1['x'].max()-data1['x'].min()) + data1['x'].mean()
+        ry_i = (np.random.random(size=data1['x'].size) - 0.5) * (data1['y'].max()-data1['y'].min()) + data1['y'].mean()
+        rz_i = (np.random.random(size=data1['x'].size) - 0.5) * (data1['z'].max()-data1['z'].min()) + data1['z'].mean()
+        rancat_i  = treecorr.Catalog(x=rx_i, y=ry_i, z=rz_i)
+
+        nn = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+        nr = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+        rn = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+        rr = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+
+        nn.process(cat_i,cat_j) #, metric='Periodic')
+        nr.process(rancat_j,cat_i) #, metric='Periodic')
+        rn.process(cat_j,rancat_i) #, metric='Periodic')
+        rr.process(rancat_i,rancat_j) #, metric='Periodic')
 
     def calc_gg(self, data1, data2, type1='central', type2='satellite', nbins=20, min_sep=44, max_sep=6e3, slop=0.1, weights=None):
         fn = getattr(self, '_calc_gg_%s_%s'%(type1,type2))
@@ -193,9 +283,253 @@ class groups(mbdb):
 
         return R, w
 
-    def _calc_gg_central_satellite(self, data1, data2, one_halo=True, two_halo=True, nbins=20, min_sep=44, max_sep=6e3, slop=0.1, randoms=True, weights=None, return_all=False, verbose=True):
+    def _calc_2h_cs(self, data1, data2, mask1, mask2, save=False, verbose=False, weights=None, nbins=20, min_sep=44, max_sep=6e3, slop=0.1):
+        """Given two numpy arrays of positions, compute the two halo central-satellite realspace correlation."""
 
-        """This is bloody horrible, I know. But it's the only way I can see to separate out the one and two halo contributions here."""
+        w2h_cs = []
+        group_ids = np.unique(data1['groupId'])
+        N = len(group_ids)
+
+        for ig1 in group_ids:
+            if verbose: 
+                print '%d/%d'%(ig1+1, N)
+            maski = mask1 & (data1['groupId']==ig1)
+            cat_i = treecorr.Catalog(w=weights, x=data1['x'][maski], y=data1['y'][maski], z=data1['z'][maski])
+
+            maskj = mask2 & (data2['groupId']!=ig1)
+            cat_j = treecorr.Catalog(w=weights, x=data2['x'][maskj], y=data2['y'][maskj], z=data2['z'][maskj])
+
+            rx_j = (np.random.random(size=data2['x'][maskj].size) - 0.5) * (data2['x'][maskj].max()-data2['x'][maskj].min()) + data2['x'][maskj].mean()
+            ry_j = (np.random.random(size=data2['x'][maskj].size) - 0.5) * (data2['y'][maskj].max()-data2['y'][maskj].min()) + data2['y'][maskj].mean()
+            rz_j = (np.random.random(size=data2['x'][maskj].size) - 0.5) * (data2['z'][maskj].max()-data2['z'][maskj].min()) + data2['z'][maskj].mean()
+            rancat_j  = treecorr.Catalog(x=rx_j, y=ry_j, z=rz_j)
+                
+            f=10000
+            rx_i = (np.random.random(size=data1['x'][maski].size * f) - 0.5) * (data2['x'][maskj].max()-data2['x'][maskj].min()) + data2['x'][maskj].mean()
+            ry_i = (np.random.random(size=data1['x'][maski].size * f) - 0.5) * (data2['y'][maskj].max()-data2['y'][maskj].min()) + data2['y'][maskj].mean()
+            rz_i = (np.random.random(size=data1['x'][maski].size * f) - 0.5) * (data2['z'][maskj].max()-data2['z'][maskj].min()) + data2['z'][maskj].mean()
+            rancat_i  = treecorr.Catalog(x=rx_i, y=ry_i, z=rz_i)
+
+            nn = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+            nr = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+            rn = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+            rr = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+
+            nn.process(cat_i,cat_j) #, metric='Periodic')
+            nr.process(rancat_j,cat_i) #, metric='Periodic')
+            rn.process(cat_j,rancat_i) #, metric='Periodic')
+            rr.process(rancat_i,rancat_j) #, metric='Periodic')
+
+            R_2h_cs = np.exp(nn.meanlogr)
+            coeff = 1./f
+            w = (nn.weight - nr.weight - coeff * rn.weight + coeff*rr.weight)/(coeff * rr.weight)
+            w2h_cs.append(w)
+
+        if save:
+            print 'Storing...'
+            np.savetxt('R_2h_cs.txt', R_2h_cs)
+            np.savetxt('w2h_cs.txt', w2h_cs)
+
+        return R_2h_cs, w2h_cs
+
+    def _calc_2h_cc(self, data1, data2, mask1, mask2, save=False, verbose=False, weights=None, nbins=20, min_sep=44, max_sep=6e3, slop=0.1):
+
+        w2h_cc=[]
+        group_ids = np.unique(data1['groupId'])
+        N = len(group_ids)
+
+        for ig1 in group_ids:
+            if verbose: 
+                print '%d/%d'%(ig1+1, N)
+            maski = mask1 & (data1['groupId']==ig1)
+            cat_i = treecorr.Catalog(w=weights, x=data1['x'][maski], y=data1['y'][maski], z=data1['z'][maski])
+
+            # Select all of the centrals that are not part of the same halo
+            maskj = mask1 & (data1['groupId']!=ig1)
+            cat_j = treecorr.Catalog(w=weights, x=data2['x'][maskj], y=data2['y'][maskj], z=data2['z'][maskj])
+
+            rx_j = (np.random.random(size=data2['x'][maskj].size) - 0.5) * (data2['x'][maskj].max()-data2['x'][maskj].min()) + data2['x'][maskj].mean()
+            ry_j = (np.random.random(size=data2['x'][maskj].size) - 0.5) * (data2['y'][maskj].max()-data2['y'][maskj].min()) + data2['y'][maskj].mean()
+            rz_j = (np.random.random(size=data2['x'][maskj].size) - 0.5) * (data2['z'][maskj].max()-data2['z'][maskj].min()) + data2['z'][maskj].mean()
+            rancat_j  = treecorr.Catalog(x=rx_j, y=ry_j, z=rz_j)
+                
+            f=10000
+            rx_i = (np.random.random(size=data1['x'][maski].size * f) -0.5) * (data2['x'][maskj].max()-data2['x'][maskj].min()) + data2['x'][maskj].mean()
+            ry_i = (np.random.random(size=data1['x'][maski].size * f) -0.5) * (data2['y'][maskj].max()-data2['y'][maskj].min()) + data2['y'][maskj].mean()
+            rz_i = (np.random.random(size=data1['x'][maski].size * f) -0.5) * (data2['z'][maskj].max()-data2['z'][maskj].min()) + data2['z'][maskj].mean()
+            rancat_i  = treecorr.Catalog(x=rx_i, y=ry_i, z=rz_i)
+
+            nn = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+            nr = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+            rn = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+            rr = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+
+            nn.process(cat_i,cat_j) #, metric='Periodic')
+            nr.process(rancat_j,cat_i) #, metric='Periodic')
+            rn.process(cat_j,rancat_i) #, metric='Periodic')
+            rr.process(rancat_i,rancat_j) #, metric='Periodic')
+
+            R_2h_cc = np.exp(nn.meanlogr)
+            coeff = 1./f
+            w = (nn.weight - nr.weight - coeff * rn.weight + coeff*rr.weight)/(coeff * rr.weight)
+            w2h_cc.append(w)
+
+        if save:
+            print 'Storing...'
+            np.savetxt('R_2h_cc.txt',R_2h_cc)
+            np.savetxt('w2h_cc.txt',w2h_cc)
+
+        return R_2h_cc, w2h_cc
+
+    def _calc_2h_ss(self, data1, data2, mask1, mask2, save=False, verbose=False, weights=None, nbins=20, min_sep=44, max_sep=6e3, slop=0.1):
+
+        w2h_ss=[]
+        group_ids = np.unique(data1['groupId'])
+        N = len(group_ids)
+
+        for j, ig1 in enumerate(group_ids):
+            if verbose: 
+                print '%d %d/%d'%(ig1, j+1, N)
+            maski = mask2 & (data1['groupId']==ig1)
+            cat_i = treecorr.Catalog(w=weights, x=data1['x'][maski], y=data1['y'][maski], z=data1['z'][maski])
+
+            maskj = mask2 & (data2['groupId']!=ig1)
+            cat_j = treecorr.Catalog(w=weights, x=data2['x'][maskj], y=data2['y'][maskj], z=data2['z'][maskj])
+
+            rx_j = (np.random.random(size=data2['x'][maskj].size) - 0.5) * (data2['x'][maskj].max()-data2['x'][maskj].min()) + data2['x'][maskj].mean()
+            ry_j = (np.random.random(size=data2['x'][maskj].size) - 0.5) * (data2['y'][maskj].max()-data2['y'][maskj].min()) + data2['y'][maskj].mean()
+            rz_j = (np.random.random(size=data2['x'][maskj].size) - 0.5) * (data2['z'][maskj].max()-data2['z'][maskj].min()) + data2['z'][maskj].mean()
+            rancat_j  = treecorr.Catalog(x=rx_j, y=ry_j, z=rz_j)
+
+            rx_i = (np.random.random(size=data1['x'][maski].size) - 0.5) * (data2['x'][maskj].max()-data2['x'][maskj].min()) + data2['x'][maskj].mean()
+            ry_i = (np.random.random(size=data1['x'][maski].size) - 0.5) * (data2['y'][maskj].max()-data2['y'][maskj].min()) + data2['y'][maskj].mean()
+            rz_i = (np.random.random(size=data1['x'][maski].size) - 0.5) * (data2['z'][maskj].max()-data2['z'][maskj].min()) + data2['z'][maskj].mean()
+            rancat_i  = treecorr.Catalog(x=rx_i, y=ry_i, z=rz_i)
+
+            nn = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+            nr = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+            rn = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+            rr = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+
+            nn.process(cat_i,cat_j) #, metric='Periodic')
+            nr.process(rancat_j,cat_i) #, metric='Periodic')
+            rn.process(cat_j,rancat_i) #, metric='Periodic')
+            rr.process(rancat_i,rancat_j) #, metric='Periodic')
+
+            R_2h_ss = np.exp(nn.meanlogr)
+            w = (nn.weight - nr.weight -  rn.weight + rr.weight) / rr.weight
+            w2h_ss.append(w)
+
+        if save:
+            print 'Storing...'
+            np.savetxt('R_2h_ss.txt', R_2h_ss)
+            np.savetxt('w2h_ss.txt', w2h_ss)
+
+        return R_2h_ss, w2h_ss
+
+    def _calc_1h_cs(self, data1, data2, mask1, mask2, save=False, verbose=False, weights=None, nbins=20, min_sep=44, max_sep=6e3, slop=0.1):
+
+        w1h_cs=[]
+        group_ids = np.unique(data1['groupId'])
+        N = len(group_ids)
+
+        for ig1 in group_ids:
+            if verbose: 
+                print '%d/%d'%(ig1+1, N)
+            maski = mask1 & (data1['groupId']==ig1)
+            cat_i = treecorr.Catalog(w=weights, x=data1['x'][maski], y=data1['y'][maski], z=data1['z'][maski])
+
+            maskj = mask2 & (data2['groupId']==ig1)
+            cat_j = treecorr.Catalog(w=weights, x=data2['x'][maskj], y=data2['y'][maskj], z=data2['z'][maskj])
+
+            rx_j = (np.random.random(size=data2['x'][maskj].size) - 0.5) * (data2['x'][maskj].max()-data2['x'][maskj].min()) + data2['x'][maskj].mean()
+            ry_j = (np.random.random(size=data2['x'][maskj].size) - 0.5) * (data2['y'][maskj].max()-data2['y'][maskj].min()) + data2['y'][maskj].mean()
+            rz_j = (np.random.random(size=data2['x'][maskj].size) - 0.5) * (data2['z'][maskj].max()-data2['z'][maskj].min()) + data2['z'][maskj].mean()
+            rancat_j  = treecorr.Catalog(x=rx_j, y=ry_j, z=rz_j)
+                
+            f=10000
+            rx_i = (np.random.random(size=data1['x'][maski].size * f) -0.5) * (data2['x'][maskj].max()-data2['x'][maskj].min()) + data2['x'][maskj].mean()
+            ry_i = (np.random.random(size=data1['x'][maski].size * f) -0.5) * (data2['y'][maskj].max()-data2['y'][maskj].min()) + data2['y'][maskj].mean()
+            rz_i = (np.random.random(size=data1['x'][maski].size * f) -0.5) * (data2['z'][maskj].max()-data2['z'][maskj].min()) + data2['z'][maskj].mean()
+            rancat_i  = treecorr.Catalog(x=rx_i, y=ry_i, z=rz_i)
+
+            nn = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+            nr = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+            rn = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+            rr = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+
+            nn.process(cat_i,cat_j) #, metric='Periodic')
+            nr.process(rancat_j,cat_i) #, metric='Periodic')
+            rn.process(cat_j,rancat_i) #, metric='Periodic')
+            rr.process(rancat_i,rancat_j) #, metric='Periodic')
+
+            R_1h_cs = np.exp(nn.meanlogr)
+            coeff = 1./f
+            w = (nn.weight - nr.weight - coeff * rn.weight + coeff*rr.weight)/(coeff * rr.weight)
+            w1h_cs.append(w)
+
+        if save:
+            print 'Storing...'
+            np.savetxt('R_1h_cs.txt',R_1h_cs)
+            np.savetxt('w1h_cs.txt',w1h_cs)
+
+        return R_1h_cs, w1h_cs
+
+    def calc_gg_all(self, data1, data2, one_halo=True, corrs=['cc','ss','cs'], two_halo=True, nbins=20, min_sep=44, max_sep=6e3, slop=0.1, randoms=True, weights=None, return_all=False, verbose=True, bootstrap_errors=False, save=False):
+        """This is bloody horrible, I know. It's currently the only way I can see to separate out the one and two halo contributions here."""
+        
+        mask1 = (data1['central']==1)
+        mask2 = (data2['central']==0)
+
+        group_ids = np.unique(data1['groupId'])
+
+        if verbose:
+            print "Will process:"
+            print "1 halo term:", 'yes'*int(one_halo), 'no'*int(np.invert(one_halo))
+            print "2 halo term:", 'yes'*int(two_halo), 'no'*int(np.invert(two_halo))
+            print ''
+            if save:
+                print 'Will save text output.'
+                print ''
+            print 'Computing correlations...'
+
+        R_2h_cs =[]
+        w2h_cs =[]
+        R_2h_cc =[]
+        w2h_cc =[]
+        R_2h_ss =[]
+        w2h_ss =[]
+        R_1h_cs =[]
+        w1h_cs =[]
+
+        # Two halo, central - satellite
+        if verbose:
+            print 'Two halo, central - satellite'
+        if (two_halo) and ('cs' in corrs):
+            R_2h_cs, w2h_cs = self._calc_2h_cs(data1,data2,mask1,mask2, save=save, verbose=verbose, weights=weights, nbins=nbins, min_sep=min_sep, max_sep=max_sep)
+
+        # Two halo, central - central
+        if verbose:
+            print 'Two halo, central - central'
+        if (two_halo) and ('cc' in corrs):
+            R_2h_cc, w2h_cc = self._calc_2h_cc(data1,data2,mask1,mask2, save=save, verbose=verbose, weights=weights, nbins=nbins, min_sep=min_sep, max_sep=max_sep)
+
+        # Two halo, satellite - satellite
+        if verbose:
+            print 'Two halo, satellite - satellite'
+        if (two_halo) and ('ss' in corrs):
+            R_2h_ss, w2h_ss = self._calc_2h_ss(data1,data2,mask1,mask2, save=save, verbose=verbose, weights=weights, nbins=nbins, min_sep=min_sep, max_sep=max_sep)
+
+        # One halo, central - satellite
+        if verbose:
+            print 'One halo, central - satellite'
+        if (one_halo) and ('cs' in corrs):
+            R_1h_cs, w1h_cs = self._calc_1h_cs(data1,data2,mask1,mask2, save=save, verbose=verbose, weights=weights, nbins=nbins, min_sep=min_sep, max_sep=max_sep)
+
+        return (R_1h_cs, R_2h_cs, R_2h_ss, R_2h_cc), (w1h_cs, w2h_cs, w2h_ss, w2h_cc)
+
+    def _calc_gg_central_satellite_discrete(self, data1, data2, one_halo=True, two_halo=True, nbins=20, min_sep=44, max_sep=6e3, slop=0.1, randoms=True, weights=None, return_all=False, verbose=True, bootstrap_errors=False):
+        """This is bloody horrible, I know. It's currently the only way I can see to separate out the one and two halo contributions here."""
         
         mask1 = (data1['central']==1)
         mask2 = (data2['central']==0)
@@ -216,6 +550,7 @@ class groups(mbdb):
             # This is the central. Should be one galaxy only.
             maski = mask1 & (data1['groupId']==ig1)
             cat_i = treecorr.Catalog(w=weights, x=data1['x'][maski], y=data1['y'][maski], z=data1['z'][maski])
+
             for ig2 in group_ids:
                 if verbose:
                     print ig1,ig2
@@ -229,27 +564,60 @@ class groups(mbdb):
                 maskj = mask2 & (data2['groupId']==ig2)
                 cat_j = treecorr.Catalog(w=weights, x=data2['x'][maskj], y=data2['y'][maskj], z=data2['z'][maskj])
 
+                #import pdb ; pdb.set_trace()
+
                 # Build a catalogue of random points drawn from the same volume
-                rx_j = np.random.random(size=data2['x'][maskj].size) * (data2['x'][maskj].max()-data1['x'][maskj].min()) + data2['x'][maskj].mean()
-                ry_j = np.random.random(size=data2['x'][maskj].size) * (data2['y'][maskj].max()-data1['y'][maskj].min()) + data2['y'][maskj].mean()
-                rz_j = np.random.random(size=data2['x'][maskj].size) * (data2['z'][maskj].max()-data1['z'][maskj].min()) + data2['z'][maskj].mean()
+                rx_j = (np.random.random(size=data2['x'][maskj].size) - 0.5) * (data2['x'][maskj].max()-data2['x'][maskj].min()) + data2['x'][maskj].mean()
+                ry_j = (np.random.random(size=data2['x'][maskj].size) - 0.5) * (data2['y'][maskj].max()-data2['y'][maskj].min()) + data2['y'][maskj].mean()
+                rz_j = (np.random.random(size=data2['x'][maskj].size) - 0.5) * (data2['z'][maskj].max()-data2['z'][maskj].min()) + data2['z'][maskj].mean()
                 rancat_j  = treecorr.Catalog(x=rx_j, y=ry_j, z=rz_j)
+
+                f=10000
+                rx_i = (np.random.random(size=data1['x'][maski].size * f) -0.5) * (data2['x'][maskj].max()-data2['x'][maskj].min()) + data2['x'][maskj].mean()
+                ry_i = (np.random.random(size=data1['x'][maski].size * f) -0.5) * (data2['y'][maskj].max()-data2['y'][maskj].min()) + data2['y'][maskj].mean()
+                rz_i = (np.random.random(size=data1['x'][maski].size * f) -0.5) * (data2['z'][maskj].max()-data2['z'][maskj].min()) + data2['z'][maskj].mean()
+                rancat_i  = treecorr.Catalog(x=rx_i, y=ry_i, z=rz_i)
 
                 nn = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
                 nr = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+                rn = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
+                rr = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=slop)
 
                 nn.process(cat_i,cat_j) #, metric='Periodic')
-                nr.process(rancat_j,cat_j) #, metric='Periodic')
+                nr.process(rancat_j,cat_i) #, metric='Periodic')
+                rn.process(cat_j,rancat_i) #, metric='Periodic')
+                rr.process(rancat_i,rancat_j) #, metric='Periodic')
+
+                #if bootstrap_errors:
+                #    Ew = self.bootstrap_gg_errors(data1, data2, maski, maskj)
+
+                #import pdb ; pdb.set_trace()
 
                 R = np.exp(nn.meanlogr)
-                w = (nn.weight - nr.weight)/nr.weight
+                coeff = 1./f
+                w = (nn.weight - nr.weight - coeff * rn.weight + coeff*rr.weight)/(coeff * rr.weight)
 
                 if ig1==ig2:
-                    w1h.append([R, w])
+                    w1h.append(w)
                 else:
-                    w2h.append([R, w])
+                    w2h.append(w)
 
         return R, w1h, w2h
+
+    def bootstrap_gg_errors(self, data1, data2, maski, maskj, npatch=20):
+
+        #Decide how many particles to use per patch
+        n = data1['x'][maski].size/npatch
+
+        for i in xrange(npatch):
+            # Select a random subset of particles
+            indices = np.random.choice(data1['x'][maski].size, size=n, replace=False)
+            if len(data1['x'][maski])>0:
+                cat_i = treecorr.Catalog(w=weights, x=data1['x'][maski], y=data1['y'][maski], z=data1['z'][maski])
+            else:
+                cat_i = treecorr.Catalog(w=weights, x=data1['x'][maski], y=data1['y'][maski], z=data1['z'][maski])
+
+                cat_j = treecorr.Catalog(w=weights, x=data2['x'][maskj], y=data2['y'][maskj], z=data2['z'][maskj])
 
 
     def calc_pos_pos(self, i, j, mask1=None, mask2=None, nbins=20, min_sep=44, max_sep=6e3, slop=0.1, randoms=True, weights=None, return_all=False):
@@ -358,12 +726,6 @@ class groups(mbdb):
         print 'Done'
 
 
-def parse_mask(mask,array):
-    if mask is None:
-        return np.ones(array.size).astype(bool)
-    else:
-        return mask
-
 
 def build_ep_corr(group1, group2, nbins=20, verbose=False):
     rbins = np.linspace(44,6e3, nbins)
@@ -395,9 +757,6 @@ def build_ep_corr(group1, group2, nbins=20, verbose=False):
         y.append([np.mean(vec), np.std(vec), len(vec)])
 
     return x, y
-
-def nfw(r,c,a):
-    return a/(r/c)/(1+r/c)/(1+r/c)
 
 # Wrapper class that inherits the basic SQL query functions from mbdb
 class halos(mbdb):
@@ -434,7 +793,7 @@ class halos(mbdb):
 
         if info:
             print 'Loading basic halo information'
-            self.info = self.get(table='subfind_halos' , fields='subfindId, central, mass, len, x, y, z, nhalo', cond='subfind_halos.snapnum = %d AND subfind_halos.groupId = %d'%(self.snapshot, self.group))
+            self.info = self.get(table='subfind_halos' , fields='subfindId, groupId, central, mass, len, x, y, z', cond='subfind_halos.snapnum = %d AND subfind_halos.groupId = %d'%(self.snapshot, self.group))
         if star_shapes:
             print 'Loading shapes of stellar halo components'
             self.star_shapes = self.cross_match(self.info, 'subfind_shapes_star', 'subfindId, q2d, a3d_x, a3d_y, a3d_z, b3d_x, b3d_y, b3d_z, c3d_x, c3d_y, c3d_z, a2d_x, a2d_y, b2d_x, b2d_y', 'subfindId', 'subfindId')
