@@ -1,0 +1,5 @@
+output : /home/ssamurof/massive_black_ii/cats/particle_info.fits
+fatal_errors : True
+dm_shapes: True
+star_shapes: True
+occupation_threshold : 1000

@@ -1,0 +1,13 @@
+B#!/bin/bash
+#1;95;0cPBS -l nodes=1:ppn=1
+#PBS -l walltime=1:00:00
+#PBS -N basic_cat_compile
+#PBS -o /home/ssamurof/logs/cat-mbii.log
+#PBS -j oe
+
+
+module load python27
+CONFIG=/home/ssamurof/.local/lib/python2.7/site-packages/mbii/scripts/options.yaml
+cd /home/ssamurof/massive_black_ii/cats
+
+python -m mbii.scripts.get_data $CONFIG

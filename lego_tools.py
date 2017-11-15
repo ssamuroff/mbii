@@ -2,6 +2,36 @@ import halotools as ht
 import numpy as np
 import halotools.mock_observables as pretending
 
+import numpy as np
+#import astropy.table as tb
+#import astropy.io.fits as pf
+
+
+def add_col(rec, name, arr=[], dtype=None, verbose=False):
+    """Generic function to add a new column to a structured numpy array."""
+
+    if name in rec.dtype.names:
+        if verbose:
+            print "Table already has a column called %s"%name
+        return rec
+
+    if len(arr)==0:
+        arr=np.zeros(len(rec))
+
+    arr = np.asarray(arr)
+    if dtype is None:
+        dtype = arr.dtype
+
+    newdtype = np.dtype(rec.dtype.descr + [(name, dtype)])
+    newrec = np.empty(rec.shape, dtype=newdtype)
+    for field in rec.dtype.fields:
+        newrec[field] = rec[field]
+
+    newrec[name] = arr
+
+    return newrec
+
+
 
 def construct_random_cat(data, mask=None, format='halotools', f=1):
 	"""Construct a catalogue of random points drawn from the same volume as the data provided."""
@@ -10,9 +40,9 @@ def construct_random_cat(data, mask=None, format='halotools', f=1):
 		print 'Random point multiplier: %3.3f'%f
 	if mask is None:
 		mask = np.ones(data.size).astype(bool)
-	rx = (np.random.random(size=data['x'][mask].size*f) - 0.5) * (data['x'][mask].max()-data['x'][mask].min()) + data['x'][mask].mean()
-	ry = (np.random.random(size=data['x'][mask].size*f) - 0.5) * (data['y'][mask].max()-data['y'][mask].min()) + data['y'][mask].mean()
-	rz = (np.random.random(size=data['x'][mask].size*f) - 0.5) * (data['z'][mask].max()-data['z'][mask].min()) + data['z'][mask].mean()
+	rx = (np.random.random(size=int(data['x'][mask].size*f)) - 0.5) * (data['x'][mask].max()-data['x'][mask].min()) + data['x'][mask].mean()
+	ry = (np.random.random(size=int(data['x'][mask].size*f)) - 0.5) * (data['y'][mask].max()-data['y'][mask].min()) + data['y'][mask].mean()
+	rz = (np.random.random(size=int(data['x'][mask].size*f)) - 0.5) * (data['z'][mask].max()-data['z'][mask].min()) + data['z'][mask].mean()
 
 	if format.lower()=='halotools':
 		return pretending.return_xyz_formatted_array(rx, ry, rz)
@@ -22,13 +52,16 @@ def construct_random_cat(data, mask=None, format='halotools', f=1):
 
 
 def choose_cs_mask(data, ctype):
-	if ctype=='c':
-		return (data['central']==1)
-	elif ctype=='s':
-		return (data['central']!=1)
-	else:
-		print 'Unrecognised galaxy type:', ctype
-		return None
+
+    if ctype=='c':
+        return (data['central']==1)
+    if ctype=='s':
+        return (data['central']!=1)
+    if ctype=='a':
+        return np.ones(data['central'].size).astype(bool)
+
+    print 'Unrecognised galaxy type:', ctype
+    return None
 
 
 

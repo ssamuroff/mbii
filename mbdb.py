@@ -10,17 +10,21 @@ import halotools as ht
 import halotools.mock_observables as pretending
 import mbii.lego_tools as util
 import mbii.basic_simulation_info as info
+
 #plt.style.use('y1a1')
 
 
 class mbdb(object):
 
     def __init__(self, sqlserver='localhost', user='flanusse', password='mysqlpass',
-                 dbname='mb2_hydro', unix_socket='/home/rmandelb.proj/flanusse/mysql/mysql.sock'):
+                 dbname='mb2_hydro', unix_socket='/home/rmandelb.proj/flanusse/mysql/mysql.sock', fatal_errors=True):
         try:
             self.db = mdb.connect(sqlserver, user, password, dbname, unix_socket=unix_socket)
         except:
-            print("Error when connecting to the database")
+            if fatal_errors:
+                raise 
+            else:
+                print("Error when connecting to the database")
 
     def get_columns(self, table):
         """
@@ -113,7 +117,7 @@ class groups(mbdb):
         #self.groups = np.unique(info['groupId'])
         return None
 
-    def _get_corrs_nosep(self, data, min_sep=44, max_sep=1e6, binning='log', nbins=20, ctype=('s','s'), estimator='Landy-Szalay', verbosity=1):
+    def _get_corrs_nosep(self, data, min_sep=44, max_sep=1e6, binning='log', nbins=20, ctype=('s','s'), estimator='Landy-Szalay', verbosity=1, randoms=None):
 
     	if verbosity>0:
     		print 'Will construct %s - %s correlation functions'%ctype
@@ -136,15 +140,20 @@ class groups(mbdb):
     	pos2 = pretending.return_xyz_formatted_array(data['x'], data['y'], data['z'], mask = mask2)
 
     	# And do the randoms
-    	r1 = util.construct_random_cat(data, mask=mask1)
-    	r2 = util.construct_random_cat(data, mask=mask2)
+    	if randoms is None:
+            r1 = util.construct_random_cat(data, mask=mask1)
+            r2 = util.construct_random_cat(data, mask=mask2)
+        else:
+            if verbosity>0:
+                print 'Using random points provided for normalisation.'
+            r1 = randoms
 
     	R = np.sqrt(np.array(rbins)[1:]*np.array(rbins)[:-1]) 
 
     	return R, pretending.tpcf(pos1, rbins, sample2=pos2, randoms=r1, period=info.Lbox, estimator=estimator )
 
 
-    def _get_corrs(self, data, min_sep=44, max_sep=1e6, binning='log', nbins=20, ctype=('s','s'), estimator='Landy-Szalay', verbosity=1, fran=1):
+    def _get_corrs(self, data, min_sep=44, max_sep=1e6, binning='log', nbins=20, ctype=('s','s'), estimator='Landy-Szalay', verbosity=1, fran=(1,1), randoms=None):
 
     	if verbosity>0:
     		print 'Will construct %s - %s correlation functions'%ctype
@@ -167,12 +176,17 @@ class groups(mbdb):
     	pos2 = pretending.return_xyz_formatted_array(data['x'], data['y'], data['z'], mask = mask2)
 
     	# And do the randoms
-    	r1 = util.construct_random_cat(data, mask=mask1, f=fran)
-    	r2 = util.construct_random_cat(data, mask=mask2, f=fran)
+    	if randoms is None:
+            r1 = util.construct_random_cat(data, mask=mask1, f=fran[0])
+            r2 = util.construct_random_cat(data, mask=mask2, f=fran[1])
+        else:
+            if verbosity>0:
+                print 'Using random points provided for normalisation.'
+            r1 = randoms
 
     	R = np.sqrt(np.array(rbins)[1:]*np.array(rbins)[:-1]) 
 
-    	return R, pretending.tpcf_one_two_halo_decomp(pos1, data['groupId'][mask1], rbins, sample2=pos2,  sample2_host_halo_id=data['groupId'][mask2], randoms=r1, period=self.Lbox, estimator=estimator )
+    	return R, pretending.tpcf_one_two_halo_decomp(pos1, data['groupId'][mask1], rbins, sample2=pos2,  sample2_host_halo_id=data['groupId'][mask2], randoms=r1, randoms2=None, factor=fran, period=self.Lbox, estimator=estimator )
 
     	#return rbins, xi_1h_11, xi_2h_11, xi_1h_12, xi_2h_12, xi_1h_22, xi_2h_22
 
@@ -760,7 +774,7 @@ def build_ep_corr(group1, group2, nbins=20, verbose=False):
 
 # Wrapper class that inherits the basic SQL query functions from mbdb
 class halos(mbdb):
-    def __init__(self, snapshot=85, group=0):
+    def __init__(self, snapshot=85, group=0, fatal_errors=True):
         super(halos, self).__init__()
         self.snapshot=snapshot
         self.group=group
@@ -768,7 +782,7 @@ class halos(mbdb):
         print "Will load info for halos in group %d snapshot %d"%(group, snapshot)
         return None
 
-    def compile_data(self, nmin=1000):
+    def compile_data(self, nmin=1000, dm_shapes=True, star_shapes=True):
         data = []
         ngroups = 0
         for j in np.arange(0,10000,1):
@@ -781,6 +795,20 @@ class halos(mbdb):
                 continue
             # If it does, then get the position data
             particle_info = self.get(table='subfind_halos' , fields='subfindId, groupId, central, mass, len, x, y, z', cond='subfind_halos.snapnum = %d AND subfind_halos.groupId = %d'%(self.snapshot, j))
+            if star_shapes:
+                names = 'subfindId, q2d, a3d_x, a3d_y, a3d_z, b3d_x, b3d_y, b3d_z, c3d_x, c3d_y, c3d_z, a2d_x, a2d_y, b2d_x, b2d_y'
+                star_info = self.cross_match(particle_info, 'subfind_shapes_star', names, 'subfindId', 'subfindId')
+                for col in star_info.dtype.names:
+                    if col=='subfindId':
+                        continue
+                    particle_info = util.add_col(particle_info, '%s_star'%col, star_info[col] )
+            if dm_shapes:
+                names = 'subfindId, q2d, a3d_x, a3d_y, a3d_z, b3d_x, b3d_y, b3d_z, c3d_x, c3d_y, c3d_z, a2d_x, a2d_y, b2d_x, b2d_y'
+                dm_info = self.cross_match(particle_info, 'subfind_shapes_dm', names, 'subfindId', 'subfindId')
+                for col in dm_info.dtype.names:
+                    if col=='subfindId':
+                        continue
+                    particle_info = util.add_col(particle_info, '%s_dm'%col, dm_info[col] )
 
             data.append(particle_info)
             ngroups+=1

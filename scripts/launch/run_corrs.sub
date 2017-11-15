@@ -1,0 +1,10 @@
+#!/bin/bash 
+#PBS -N run_corrs_1h2h
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=4:00:00
+#PBS -o /home/ssamurof/logs/run_corr.log
+#PBS -j oe
+
+module load python27
+cd /home/ssamurof/
+python run_corrs_1h2h.py
