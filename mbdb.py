@@ -130,7 +130,7 @@ class groups(mbdb):
         #self.groups = np.unique(info['groupId'])
         return None
 
-    def _get_corrs_nosep(self, data, min_sep=44, max_sep=1e6, binning='log', nbins=20, ctype=('s','s'), estimator='Landy-Szalay', verbosity=1, randoms=None):
+    def _get_corrs_nosep(self, data, min_sep=44, max_sep=1e6, binning='log', nbins=20, ctype=('s','s'), estimator='Landy-Szalay', verbosity=1, randoms=None, method='halotools', verbosity=1):
 
     	if verbosity>0:
     		print 'Will construct %s - %s correlation functions'%ctype
@@ -163,7 +163,33 @@ class groups(mbdb):
 
     	R = np.sqrt(np.array(rbins)[1:]*np.array(rbins)[:-1]) 
 
-    	return R, pretending.tpcf(pos1, rbins, sample2=pos2, randoms=r1, period=info.Lbox, estimator=estimator )
+        print 'Using %s to calculate two-point correlations'%method
+    	if method=='halotools':
+            return R, pretending.tpcf(pos1, rbins, sample2=pos2, randoms=r1, period=info.Lbox, estimator=estimator )
+
+        elif method=='treecorr':
+            print 'Constructing catalogues...'
+            cat_i = treecorr.Catalog(x=data['x'][mask1], y=data['y'][mask1], z=data['z'][mask1])
+            cat_j = treecorr.Catalog(x=data['x'][mask2], y=data['y'][mask2], z=data['z'][mask2])
+            rx_1 = (np.random.random(size=data['x'][mask1].size) - 0.5) * (data['x'][mask1].max()-data['x'][mask1].min()) + data['x'][mask1].mean()
+            ry_1 = (np.random.random(size=data['x'][mask1].size) - 0.5) * (data['y'][mask1].max()-data['y'][mask1].min()) + data['y'][mask1].mean()
+            rz_1 = (np.random.random(size=data['x'][mask1].size) - 0.5) * (data['z'][mask1].max()-data['z'][mask1].min()) + data['z'][mask1].mean()
+            rancat_1  = treecorr.Catalog(x=rx_1, y=ry_1, z=rz_1)
+
+            print 'Correlating...'
+            nn = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=0.1)
+            nr = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=0.1)
+            rn = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=0.1)
+            rr = treecorr.NNCorrelation(nbins=nbins, min_sep=min_sep, max_sep=max_sep, bin_slop=0.1)
+
+            nn.process(cat_i,cat_j) 
+            nr.process(rancat_1,cat_i)
+            rn.process(cat_j,rancat_1)
+            rr.process(rancat_1,rancat_1) 
+            R = np.exp(nn.meanlogr)
+            w = (nn.weight - nr.weight -  rn.weight + rr.weight) / rr.weight
+            return R, w
+
 
 
     def _get_corrs(self, data, min_sep=44, max_sep=1e6, binning='log', nbins=20, ctype=('s','s'), estimator='Landy-Szalay', verbosity=1, fran=(1,1), randoms=None):
@@ -198,6 +224,11 @@ class groups(mbdb):
             r1 = randoms
 
     	R = np.sqrt(np.array(rbins)[1:]*np.array(rbins)[:-1]) 
+
+        #print 'Computing jackkife errorbars'
+        #E11 = pretending.tpcf_jackknife(pos1, r1, rbins, sample2=pos1, period=self.Lbox, estimator=estimator )
+        #E22 = pretending.tpcf_jackknife(pos2, r1, rbins, sample2=pos2, period=self.Lbox, estimator=estimator )
+        #E12 = pretending.tpcf_jackknife(pos1, r1, rbins, sample2=pos2, period=self.Lbox, estimator=estimator )
 
     	return R, pretending.tpcf_one_two_halo_decomp(pos1, data['groupId'][mask1], rbins, sample2=pos2,  sample2_host_halo_id=data['groupId'][mask2], randoms=r1, randoms2=None, factor=fran, period=self.Lbox, estimator=estimator )
 
