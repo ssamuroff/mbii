@@ -10,6 +10,8 @@ import halotools as ht
 import halotools.mock_observables as pretending
 import mbii.lego_tools as util
 import mbii.basic_simulation_info as info
+import tools.diagnostics as di
+import fitsio as fi
 
 #plt.style.use('y1a1')
 
@@ -65,9 +67,11 @@ class mbdb(object):
         print 'Will cross match column %s in the table provided with %s in table %s'%(match_column,match_column2,table)
         print 'Building query...'
         sql = "SELECT %s FROM %s WHERE %s IN ("%(fields, table, match_column)
+
         for row in source[match_column]:
-            sql+="'%s',"%str(row)
+            sql+="'%d',"%int(row)
         sql = sql[:-1] + ')'
+        
         try:
             # prepare a cursor for the query
             cursor = self.db.cursor()
@@ -81,7 +85,11 @@ class mbdb(object):
                 return
 
         results = fromarrays(np.array(cursor.fetchall()).squeeze().T,names=fields)
-        return results
+
+        # Finally match the results
+        # Without this the results of the second query are misaligned  
+        sm, rm = di.match_results(source, results, name1='subfindId', name2='subfindId')
+        return sm, rm
 
     def get_sql(self, sql, fields):
         try:
@@ -100,7 +108,12 @@ class mbdb(object):
         self.snapshot = snapshot
         return None
 
-
+class particle_data(mbdb):
+    def __init__(self, filename):
+        super(particle_data, self).__init__()
+        print 'Obtaining particle catalogue from'
+        print filename
+        self.info = fi.FITS(filename)['particle_data'].read()
 
 class groups(mbdb):
     def __init__(self, snapshot=85, info=None):
@@ -785,30 +798,37 @@ class halos(mbdb):
     def compile_data(self, nmin=1000, dm_shapes=True, star_shapes=True):
         data = []
         ngroups = 0
-        for j in np.arange(0,10000,1):
+        for j in np.arange(0,20000,1):
             # First submit a query to find the particle membership of this group
             group_info = self.get(table='subfind_groups' , fields='subfindId, nhalo', cond='subfind_groups.snapnum = %d AND subfind_groups.groupId = %d'%(self.snapshot, j))
             nhalo = group_info['nhalo']
 
-            # Check it meets the minimum number of particles
-            if nhalo<nmin:
+            # Check it has the minimum number of particles
+            if (nhalo<nmin):
                 continue
             # If it does, then get the position data
-            particle_info = self.get(table='subfind_halos' , fields='subfindId, groupId, central, mass, len, x, y, z', cond='subfind_halos.snapnum = %d AND subfind_halos.groupId = %d'%(self.snapshot, j))
+            particle_info = self.get(table='subfind_halos' , fields='subfindId, groupId, central, mass, m_dm, m_star, m_gas, len, x, y, z', cond='subfind_halos.snapnum = %d AND subfind_halos.groupId = %d'%(self.snapshot, j))
             if star_shapes:
-                names = 'subfindId, q2d, a3d_x, a3d_y, a3d_z, b3d_x, b3d_y, b3d_z, c3d_x, c3d_y, c3d_z, a2d_x, a2d_y, b2d_x, b2d_y'
-                star_info = self.cross_match(particle_info, 'subfind_shapes_star', names, 'subfindId', 'subfindId')
+                names = 'subfindId, q2d, q3d, s3d, a3d_x, a3d_y, a3d_z, b3d_x, b3d_y, b3d_z, c3d_x, c3d_y, c3d_z, a2d_x, a2d_y, b2d_x, b2d_y'
+                particle_info, star_info = self.cross_match(particle_info, 'subfind_shapes_star', names, 'subfindId', 'subfindId')
                 for col in star_info.dtype.names:
                     if col=='subfindId':
                         continue
                     particle_info = util.add_col(particle_info, '%s_star'%col, star_info[col] )
             if dm_shapes:
-                names = 'subfindId, q2d, a3d_x, a3d_y, a3d_z, b3d_x, b3d_y, b3d_z, c3d_x, c3d_y, c3d_z, a2d_x, a2d_y, b2d_x, b2d_y'
-                dm_info = self.cross_match(particle_info, 'subfind_shapes_dm', names, 'subfindId', 'subfindId')
+                names = 'subfindId, q2d, q3d, s3d, a3d_x, a3d_y, a3d_z, b3d_x, b3d_y, b3d_z, c3d_x, c3d_y, c3d_z, a2d_x, a2d_y, b2d_x, b2d_y'
+                particle_info, dm_info = self.cross_match(particle_info, 'subfind_shapes_dm', names, 'subfindId', 'subfindId')
                 for col in dm_info.dtype.names:
                     if col=='subfindId':
                         continue
                     particle_info = util.add_col(particle_info, '%s_dm'%col, dm_info[col] )
+
+                # Check Ananth has generated a shape for everything selected 
+                # We're using the major axis here. The original cut was on the 'lenbytype' field,
+                # which isn't included in the coma sql tables.
+                select = (particle_info['a3d_x_dm']!=0) & (particle_info['a3d_y_dm']!=0)
+                print 'Discarding %d/%d particles with len<50'%(particle_info['subfindId'][np.invert(select)].size, particle_info['subfindId'].size)
+                particle_info = particle_info[select]
 
             data.append(particle_info)
             ngroups+=1

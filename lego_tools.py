@@ -6,6 +6,14 @@ import numpy as np
 #import astropy.table as tb
 #import astropy.io.fits as pf
 
+def process_bootstrap(bootstrap_iterations):
+    mu = np.array(bootstrap_iterations).mean(axis=0)
+    res = (np.array(bootstrap_iterations) - mu)**2
+    niter = len(bootstrap_iterations)
+
+    B = np.sqrt(sum(res)/(niter-1))
+
+    return B
 
 def add_col(rec, name, arr=[], dtype=None, verbose=False):
     """Generic function to add a new column to a structured numpy array."""
