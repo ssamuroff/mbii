@@ -130,7 +130,7 @@ class groups(mbdb):
         #self.groups = np.unique(info['groupId'])
         return None
 
-    def _get_corrs_nosep(self, data, min_sep=44, max_sep=1e6, binning='log', nbins=20, ctype=('s','s'), estimator='Landy-Szalay', verbosity=1, randoms=None, method='halotools', verbosity=1):
+    def _get_corrs_nosep(self, data, min_sep=44, max_sep=1e6, binning='log', nbins=20, ctype=('s','s'), estimator='Landy-Szalay', verbosity=1, randoms=None, method='halotools'):
 
     	if verbosity>0:
     		print 'Will construct %s - %s correlation functions'%ctype
@@ -876,9 +876,9 @@ class halos(mbdb):
         if star_shapes:
             print 'Loading shapes of stellar halo components'
             self.star_shapes = self.cross_match(self.info, 'subfind_shapes_star', 'subfindId, q2d, a3d_x, a3d_y, a3d_z, b3d_x, b3d_y, b3d_z, c3d_x, c3d_y, c3d_z, a2d_x, a2d_y, b2d_x, b2d_y', 'subfindId', 'subfindId')
-            self.a = np.array([self.star_shapes['a3d_x'], self.star_shapes['a3d_y'], self.star_shapes['a3d_z']]).T
-            self.b = np.array([self.star_shapes['b3d_x'], self.star_shapes['b3d_y'], self.star_shapes['b3d_z']]).T
-            self.c = np.array([self.star_shapes['c3d_x'], self.star_shapes['c3d_y'], self.star_shapes['c3d_z']]).T
+            #self.a = np.array([self.star_shapes['a3d_x'], self.star_shapes['a3d_y'], self.star_shapes['a3d_z']]).T
+            #self.b = np.array([self.star_shapes['b3d_x'], self.star_shapes['b3d_y'], self.star_shapes['b3d_z']]).T
+            #self.c = np.array([self.star_shapes['c3d_x'], self.star_shapes['c3d_y'], self.star_shapes['c3d_z']]).T
 
         if dm_shapes:
             print 'Loading shapes of dark matter halo components'
@@ -889,4 +889,76 @@ class halos(mbdb):
 
         print 'Done'
         return None
+
+import math
+import fitsio as fi
+
+def classify_subhalos(data):
+    # Setup the database connection
+    sqlserver='localhost'
+    user='flanusse'
+    password='mysqlpass'
+    dbname='mb2_hydro'
+    unix_socket='/home/rmandelb.proj/flanusse/mysql/mysql.sock'
+    db = mdb.connect(sqlserver, user, password, dbname, unix_socket=unix_socket)
+    names = ['subfindId', 'snapnum', 'haloId', 'groupId', 'central', 'mass', 'len', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'vdisp', 'vcirc', 'rcirc', 'm_gas', 'm_dm', 'm_star', 'm_bh'] 
+
+    dt = [('subfindId',int),
+    ('snapnum',int),
+    ('haloId',int),
+    ('groupId',int),
+    ('central',int),
+    ('mass',float),
+    ('len',int),
+    ('x',float),
+    ('y',float),
+    ('z',float),
+    ('vx',float),
+    ('vy',float),
+    ('vz',float),
+    ('vdisp',float),
+    ('vcirc',float), 
+    ('rcirc',float),
+    ('m_gas',float),
+    ('m_dm',float),
+    ('m_star',float),
+    ('m_bh',float)]
+
+    out = np.zeros(len(data), dtype=dt)
+
+    for i, subhalo in enumerate(data):
+        sql = "SELECT * FROM subfind_halos WHERE len=%d AND groupId=%d;"%(subhalo['len'], math.ceil(subhalo['groupid']))
+
+        #print sql
+        cursor = db.cursor()
+        cursor.execute(sql)
+
+        try:
+            
+            results = fromarrays(np.array(cursor.fetchall()).squeeze().T, names=names)
+        except:
+            print 'Could not match results'
+            continue
+        print i, results
+
+        if (results.size>1):
+            select = np.isclose(results['x'],subhalo['pos'][0]) & np.isclose(results['y'],subhalo['pos'][1]) & np.isclose(results['z'],subhalo['pos'][2])
+            results = results[select]
+        
+        for colname in results.dtype.names:
+            out[colname][i] = results[colname]
+
+    outfits = fi.FITS('/home/ssamurof/subhalo_central_flag.fits','rw')
+    outfits.write(out)
+    outfits.close()
+
+
+
+
+
+
+
+
+
+
 

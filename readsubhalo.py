@@ -102,8 +102,8 @@ class SnapDir(object):
             self.schema = None
 
     def readsubhalo(self, g=None):
-        """ read the basic subhalo catelog,
-            if g is given the catelog is categorized by the group catelog
+        """ read the basic subhalo catalog,
+            if g is given the catalog is categorized by the group catalog
             g """
         rt = numpy.memmap(self.subhalofile, mode='r', dtype=subdtype)
         if g is not None:
@@ -150,14 +150,14 @@ class SnapDir(object):
             return SEDLAM, numpy.fromfile(f, count=1220, dtype='f4')
 
     def readgroup(self):
-        """ read the basic group catelog.
-            the returned catelog can be used to categorize readsubhalo
+        """ read the basic group catalog.
+            the returned catalog can be used to categorize readsubhalo
             or load.
         """
         return numpy.memmap(self.groupfile, mode='r', dtype=groupdtype)
 
     def load(self, type, comp, g=None):
-        """ this will read in property 'comp' of partile type type.
+        """ this will read in property 'comp' of particle type type.
 
             See pdtype for the basic properties of type=0~5.
 
