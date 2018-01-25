@@ -60,7 +60,7 @@ class halo_wrapper:
 		# Convert to Mpc h^-1
 		for name in ['x', 'y', 'z']:
 			self.info[name]/=1e3
-			self.groups[name]/=1e3
+			self.group_info[name]/=1e3
 
 		self.ids = np.arange(0, len(self.info), 1)
 
