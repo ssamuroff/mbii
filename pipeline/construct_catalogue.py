@@ -42,7 +42,7 @@ class halo_wrapper:
 		unix_socket='/home/rmandelb.proj/flanusse/mysql/mysql.sock'
 		db = mdb.connect(sqlserver, user, password, dbname, unix_socket=unix_socket)
 
-		# Setup the database connection and query for the centroids of all the groups
+		# Setup the database connection and query for the centroids of all the halos
 		c = db.cursor()
 		sql = 'SELECT x,y,z,groupId,mass,len FROM subfind_halos WHERE snapnum=85;'
 		if verbosity>0:
@@ -50,9 +50,17 @@ class halo_wrapper:
 		c.execute(sql)
 		self.info = fromarrays(np.array(c.fetchall()).squeeze().T,names='x,y,z,groupId,mass,len')
 
+		# Do the same for groups
+		sql = 'SELECT x,y,z FROM subfind_groups WHERE snapnum=85;'
+		if verbosity>0:
+			print 'Submitting group query...'
+		c.execute(sql)
+		self.group_info = fromarrays(np.array(c.fetchall()).squeeze().T,names='x,y,z,groupId')
+
 		# Convert to Mpc h^-1
 		for name in ['x', 'y', 'z']:
 			self.info[name]/=1e3
+			self.groups[name]/=1e3
 
 		self.ids = np.arange(0, len(self.info), 1)
 
@@ -65,17 +73,37 @@ class halo_wrapper:
 		# Match up each galaxy (subhalo) to the nearest halo centroid
 		if self.verbosity>0:
 			print 'Building halo KD tree'
+
 		# Build the tree
 		xyz0 = np.array([self.info['x'], self.info['y'], self.info['z']])
 		tree = sps.KDTree(xyz0.T)
 
-		# Query it for each 3D galaxy position
 		if self.verbosity>0:
 			print 'Querying tree'
+
+		# Query it for each 3D galaxy position
 		xyz = np.array([data['x'], data['y'], data['z']])
 		R,ind = tree.query(xyz.T, k=1)
 
 		return R, ind, self.info[ind]
+
+	def groups(self, data):
+		# Match up each galaxy (subhalo) to the nearest group centroid
+		if self.verbosity>0:
+			print 'Building group KD tree'
+
+		# Build the tree
+		xyz0 = np.array([self.group_info['x'], self.group_info['y'], self.group_info['z']])
+		tree = sps.KDTree(xyz0.T)
+
+		if self.verbosity>0:
+			print 'Querying tree'
+
+		# Query it for each 3D galaxy position
+		xyz = np.array([data['x'], data['y'], data['z']])
+		R,ind = tree.query(xyz.T, k=1)
+
+		return R, ind, self.group_info[ind]
 
 
 class catalogue:
@@ -90,8 +118,8 @@ class catalogue:
 		for name in cuts.keys():
 			lower, upper = cuts[name].split()
 
-			if verbosity>0:
-				print name, lower, upper
+			if (verbosity>0):
+				print '%s < %s < %s'%(lower, name, upper)
 
 			if '_dm' in name:
 				sel = (dm[name.replace('_dm', '')]<float(upper)) & (dm[name.replace('_dm', '')]>float(lower))
@@ -112,12 +140,15 @@ class catalogue:
 		return self.mask
 
 	def occupation_statistics(self):
-		i,nocc = np.unique(self.array['halo_id'], return_counts=True)
+		i,edges,nocc = np.unique(self.array['halo_id'], return_counts=True, return_index=True)
+
+		edges = np.hstack((edges, np.array([-1])))
 
 		# There must be a better way of doing this.
-		for (j,N)in zip(i,nocc):
-			sel = (self.array['halo_id']==j)
-			self.array['nocc'][sel] = N
+		for j,N in enumerate(nocc):
+			self.array['nocc'][edges[j]:edges[(j+1)]] = N
+
+		self.array['nocc'][-1] = nocc[-1]
 
 		return
 
@@ -171,11 +202,11 @@ if args.verbosity>0:
 dm = fi.FITS(config['dm_shapes'])['dm'].read()
 
 
-
 # Now create an array in which to store the required columns
 cat = catalogue()
 # Impose the selection cuts, as specified in the configuration file
 mask = cat.build_selection_mask(config['cuts'], baryons, dm, verbosity=args.verbosity)
+mask = mask & np.isfinite(h['pos'].T[0]) & np.isfinite(h['pos'].T[1]) & np.isfinite(h['pos'].T[2])
 
 cat.array = np.zeros(baryons[mask].size, dtype=dt)
 
@@ -236,11 +267,14 @@ if config['include']['halo_matching']:
 	halos = halo_wrapper(config['snapshot'], verbosity=args.verbosity)
 	R, ind, info = halos.populate(cat.array)
 
-	cat.array['halo_id'] = halos.ids[ind]
-	cat.array['rh'] = R
+	cat.array['halo_id'] = info['groupId']
+
+	Rg, indg, infog = halos.groups(cat.array)
+	cat.array['rh'] = Rg
 
 	# Working out the halo occupation is slightly more fiddly
 	cat.occupation_statistics()
+	import pdb ; pdb.set_trace()
 
 # Now save the compiled subhalo data as a FITS file
 cat.export(config['output'])
