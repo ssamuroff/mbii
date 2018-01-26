@@ -28,7 +28,7 @@ dt = [
       ('vrot', float), # Rotational velocity about the subhalo centre
       ('sigma', float), # Velocity dispersion  
       ('central', int), # Flag to indicate central galaxies
-      ('rh', int), # Radial distance from the centre of the halo
+      ('rh', float), # Radial distance from the centre of the halo
       ('halo_id', int), # ID of the halo in which each galaxy resides
       ('nocc', int)] # Number of galaxies in that halo (so for any galaxy there are nocc-1 others sharing the same halo)
 
@@ -156,7 +156,7 @@ class catalogue:
 
 		return
 
-	def tenneti_flag(self, h, mask):
+	def tenneti_info(self, h, mask):
 		centralflag = np.fromfile('/home/rmandelb.proj/ananth/centralflag_085',dtype=np.uint32)
 
 		contam_mask = np.isfinite(h['pos'].T[1]) & (h['pos'].T[0]<100000) & (h['pos'].T[1]<100000) & (h['pos'].T[2]<100000)
@@ -262,8 +262,8 @@ cat.array = np.zeros(baryons[mask].size, dtype=dt)
 # The ids, masses and particle numbers are fairly straightforwards to obtain 
 i = np.arange(0, baryons.size, 1)
 cat.array['object_id'] = i[mask]
-cat.array['baryon_mass'] = h['massbytype'].T[1][mask]
-cat.array['matter_mass'] = h['massbytype'].T[4][mask]
+cat.array['baryon_mass'] = h['massbytype'].T[4][mask]
+cat.array['matter_mass'] = h['massbytype'].T[1][mask]
 cat.array['npart_dm'] = h['lenbytype'].T[1][mask]
 cat.array['npart_baryon'] = h['lenbytype'].T[4][mask]
 
@@ -271,6 +271,9 @@ cat.array['npart_baryon'] = h['lenbytype'].T[4][mask]
 cat.array['x'] = h['pos'].T[0][mask]/1e3
 cat.array['y'] = h['pos'].T[1][mask]/1e3
 cat.array['z'] = h['pos'].T[2][mask]/1e3
+
+cat.array['vrot'] = h['vcirc'][mask]
+cat.array['sigma'] = h['vdisp'][mask]
 
 # Copy over the 3D shape vectors
 cat.array['a1'] = baryons['c1'][mask]
@@ -323,7 +326,7 @@ if config['include']['halo_matching']:
 
 	# Working out the halo occupation is slightly more fiddly
 	cat.occupation_statistics()
-	cat.tenneti_flag()
+	cat.tenneti_info(h, mask)
 	
 
 import pdb ; pdb.set_trace
