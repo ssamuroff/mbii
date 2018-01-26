@@ -25,6 +25,8 @@ dt = [
       ('b1_dm', float), ('b2_dm', float), ('b3_dm', float),
       ('c1_dm', float), ('c2_dm', float), ('c3_dm', float), # Normalised 3 vector along the major axis , defined by the dark matter distribution
       ('x', float), ('y', float), ('z', float), # 3D position in Cartesian coordinates, in Mpc h^-1
+      ('vrot', float), # Rotational velocity about the subhalo centre
+      ('sigma', float), # Velocity dispersion  
       ('central', int), # Flag to indicate central galaxies
       ('rh', int), # Radial distance from the centre of the halo
       ('halo_id', int), # ID of the halo in which each galaxy resides
@@ -51,7 +53,7 @@ class halo_wrapper:
 		self.info = fromarrays(np.array(c.fetchall()).squeeze().T,names='x,y,z,groupId,mass,len')
 
 		# Do the same for groups
-		sql = 'SELECT x,y,z FROM subfind_groups WHERE snapnum=85;'
+		sql = 'SELECT x,y,z,groupId FROM subfind_groups WHERE snapnum=85;'
 		if verbosity>0:
 			print 'Submitting group query...'
 		c.execute(sql)
@@ -114,6 +116,8 @@ class catalogue:
 		if verbosity>0:
 			"Constructing subhalo selection cut"
 
+		self.verbosity = verbosity
+
 		mask = np.zeros(baryons.size)
 		for name in cuts.keys():
 			lower, upper = cuts[name].split()
@@ -152,13 +156,58 @@ class catalogue:
 
 		return
 
-	def find_cs_flag(self):
-		for ih in np.unique(self.array['halo_id']):
+	def tenneti_flag(self, h, mask):
+		centralflag = np.fromfile('/home/rmandelb.proj/ananth/centralflag_085',dtype=np.uint32)
 
-			rh = self.array['rh'][(self.array['halo_id']==ih)]
-			Rmin = rh.min()
-			ic = np.argwhere(rh==Rmin)
-			self.array['central'][ic] = 1
+		contam_mask = np.isfinite(h['pos'].T[1]) & (h['pos'].T[0]<100000) & (h['pos'].T[1]<100000) & (h['pos'].T[2]<100000)
+		cflag = centralflag[contam_mask[self.mask]]
+
+		self.array['central'] = cflag
+
+		return
+
+	def find_cs_flag(self, group_data):
+		# This is very similar to the neighbour search carried out earlier
+		# But now we match up the nearest subhalo to each group centroid
+		# And call it the central galaxy
+
+		if self.verbosity>0:
+		    	print 'Constructing central flag table'
+
+		groups = np.unique(self.array['halo_id'])
+		ngrp = len(groups)
+
+		for i, g in enumerate(group_data):
+		    # Match up each galaxy (subhalo) to the nearest group centroid
+		    if self.verbosity>0:
+		    	print 'Building KD tree'
+
+		    # Build the tree using galaxies in the group
+		    select = (self.array['halo_id']==g['groupId'])
+		    xyz0 = np.array([self.array['x'][select], self.array['y'][select], self.array['z'][select]])
+		    tree = sps.KDTree(xyz0.T)
+
+		    if self.verbosity>0:
+		    	print 'Querying tree'
+
+		    # Query it for the 3D halo centroid (one 3 vector)
+		    xyz = np.array([g['x'], g['y'], g['z']])
+		    R,ind = tree.query(xyz.T, k=1)
+
+		    import pdb ; pdb.set_trace()
+
+		
+
+
+
+
+
+#		for ih in np.unique(self.array['halo_id']):
+#
+#			rh = self.array['rh'][(self.array['halo_id']==ih)]
+#			Rmin = rh.min()
+#			ic = np.argwhere(rh==Rmin)
+#			self.array['central'][ic] = 1
 
 	def export(self, outpath):
 
@@ -274,8 +323,10 @@ if config['include']['halo_matching']:
 
 	# Working out the halo occupation is slightly more fiddly
 	cat.occupation_statistics()
-	import pdb ; pdb.set_trace()
+	cat.tenneti_flag()
+	
 
+import pdb ; pdb.set_trace
 # Now save the compiled subhalo data as a FITS file
 cat.export(config['output'])
 
