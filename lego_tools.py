@@ -66,7 +66,7 @@ def symmetrise_catalogue3(data=None,mask=None,filename='/home/ssamurof/massive_b
         i0+=ngal
 
     outfits = fi.FITS(savedir, 'rw')
-    outfits.write(outdat)
+    outfits.write(outdat.replace('.fits', '%d.fits'%rank))
     outfits.close()
 
     print 'Done'
