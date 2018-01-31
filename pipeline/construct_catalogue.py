@@ -160,7 +160,9 @@ class catalogue:
 		centralflag = np.fromfile('/home/rmandelb.proj/ananth/centralflag_085',dtype=np.uint32)
 
 		contam_mask = np.isfinite(h['pos'].T[1]) & (h['pos'].T[0]<100000) & (h['pos'].T[1]<100000) & (h['pos'].T[2]<100000)
-		cflag = centralflag[contam_mask[self.mask]]
+
+		import pdb ; pdb.set_trace()
+		cflag = centralflag[contam_mask[mask]]
 
 		self.array['central'] = cflag
 
@@ -297,8 +299,8 @@ cat.array['c2_dm'] = dm['a2'][mask]
 cat.array['c3_dm'] = dm['a3'][mask]
 
 # Now calculate the projected ellipticities
-phi = np.arctan2(cat.array['a2'], cat.array['a1'])
-q = np.sqrt(baryons['lambda2'][mask]/baryons['lambda1'][mask])
+phi = np.arctan2(baryons['a2_2d'][mask], baryons['a1_2d'][mask])
+q = np.sqrt(baryons['lambda2_2d'][mask]/baryons['lambda1_2d'][mask])
 e = (q-1)/(q+1)
 e[np.invert(np.isfinite(e))] = 0.0
 cat.array['e1'] = e * np.cos(2*phi)
@@ -306,12 +308,13 @@ cat.array['e2'] = e * np.sin(2*phi)
 
 
 # And the same for the projected DM shapes
-phi = np.arctan2(cat.array['a2_dm'], cat.array['a1_dm'])
-q = np.sqrt(dm['lambda2'][mask]/dm['lambda1'][mask])
+phi = np.arctan2(dm['a2_2d'][mask], dm['a1_2d'][mask])
+q = np.sqrt(dm['lambda2_2d'][mask]/dm['lambda1_2d'][mask])
 e = (q-1)/(q+1)
 e[np.invert(np.isfinite(e))] = 0.0
 cat.array['e1_dm'] = e * np.cos(2*phi)
 cat.array['e2_dm'] = e * np.sin(2*phi)
+
 
 # Now find the associated halo per galaxy
 # We'll need to read out this information from the database
@@ -327,6 +330,15 @@ if config['include']['halo_matching']:
 	# Working out the halo occupation is slightly more fiddly
 	cat.occupation_statistics()
 	cat.tenneti_info(h, mask)
+
+else:
+	ref = fi.FITS('/physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v2.fits')[1].read()
+	# Otherwise, just copy over the relevant columns from the base catalogue
+	for name in ['central', 'nocc', 'rh', 'halo_id']:
+		cat.array[name] = ref[name]
+
+
+
 	
 
 import pdb ; pdb.set_trace

@@ -1,16 +1,318 @@
 import halotools as ht
 import numpy as np
 import copy
+import fitsio as fi
 import pylab as plt
 plt.switch_backend('agg')
-import halotools.mock_observables as pretending
+#import halotools.mock_observables as pretending
 from mbii.readsubhalo import *
 from mbii.properties import *
-
-
+import glob
 import numpy as np
+import treecorr
 #import astropy.table as tb
 #import astropy.io.fits as pf
+from numpy.core.records import fromarrays
+import pymysql as mdb
+
+
+
+
+
+def symmetrise_catalogue3(data=None,mask=None,filename='/home/ssamurof/massive_black_ii/subhalo_cat-nthreshold5.fits', savedir=None, replace=False, verbose=True, nmin=2, rank=0, size=1):
+    root_folder='/physics/yfeng1/mb2'
+    snapshot='085'
+
+    if mask is None:
+        mask = np.ones(data.size).astype(bool)
+
+    print savedir
+    if savedir==filename:
+        print "WARNING: target and input file paths are the same"
+        import pdb ; pdb.set_trace()
+
+    group_ids = data['halo_id'][mask]
+    groups = np.unique(group_ids)
+
+
+    # Copy over the old data
+    outdat = np.zeros(len(data), dtype=data.dtype)
+    for name in outdat.dtype.names:
+        outdat[name] = data[name]
+
+    i0=0
+    for i, g in enumerate(groups):
+
+        if i%size!=rank:
+            continue
+        
+        select = (group_ids==g)
+
+        ngal = len(data[select])
+        outdat['halo_id'][select] = group_ids[select]
+        if ngal<nmin:
+            print 'Skipping halo %d as it contains <%d galaxies'%(g,nmin)
+            outdat['subhalo_id'][select] = ident[select]
+            continue
+
+        symmetrised_halo = symmetrise_halo3(data[select], gids=group_ids[select], verbose=False, g=g)
+
+        if verbose:
+            print g, ngal
+
+        for name in data.dtype.names:
+            outdat[name][select] = symmetrised_halo[name]
+
+        i0+=ngal
+
+    outfits = fi.FITS(savedir, 'rw')
+    outfits.write(outdat)
+    outfits.close()
+
+    print 'Done'
+    return 0
+
+def symmetrise_halo3(data, gids=None, verbose=True, g=None):
+    if verbose:
+        print 'Will apply one random rotation per subhalo'
+    np.random.seed(9000)
+
+    # Work out the centroid about which to rotate
+    import weightedstats as ws
+    N = data['npart_baryon']
+    # Let's try something slightly different here
+    # get the centroid position from the database rather than trying to recalculate it
+    info = find_centre(g) 
+    x0, y0, z0 = info['x'], info['y'], info['z']
+
+    cent = np.array([x0,y0,z0])
+    positions = np.array([data['x']-x0, data['y']-y0, data['z']-z0])
+    c = np.array([data['c3'], data['c2'], data['c1']])
+    c_dm = np.array([data['c3_dm'], data['c2_dm'], data['c1_dm']])
+    a = np.array([data['a3'], data['a2'], data['a1']])
+    a_dm = np.array([data['a3_dm'], data['a2_dm'], data['a1_dm']])
+    b = np.array([data['b3'], data['b2'], data['b1']])
+    b_dm = np.array([data['b3_dm'], data['b2_dm'], data['b1_dm']])
+
+    rot = np.zeros(data.size, dtype=data.dtype)
+    n = data.size
+    for name in data.dtype.names:
+        rot[name][:n] = data[name]
+
+    for i in xrange(n):
+        if verbose:
+            print i,
+        # Define a random rotation about each axis
+        alpha = 2 * np.pi * (np.random.rand() - 0.5) 
+        beta = 2 * np.pi * (np.random.rand() - 0.5) 
+        gamma = 2 * np.pi * (np.random.rand() - 0.5)
+
+        if verbose:
+            print alpha, beta, gamma
+
+        pos = positions.T[i]
+
+
+        # Do the symmetrisation as three independent rotations in the xy, xz and yz planes 
+        rotated = copy.deepcopy(pos)
+        Rxy = np.array([[np.cos(alpha), -np.sin(alpha)], [np.sin(alpha), np.cos(alpha)]])
+        Rxz = np.array([[np.cos(beta), -np.sin(beta)], [np.sin(beta), np.cos(beta)]])
+        Ryz = np.array([[np.cos(gamma), -np.sin(gamma)], [np.sin(gamma), np.cos(gamma)]])
+        rotated[:2] = np.dot(Rxy,rotated[:2])
+        rotated[[0,2]] = np.dot(Rxz,np.array([rotated[0],rotated[2]]))
+        rotated[1:] = np.dot(Ryz,rotated[1:])
+
+
+        # Now do the shapes in the same way
+        arot = copy.deepcopy(a.T[i])
+        arot[:2] = np.dot(Rxy,arot[:2])
+        arot[[0,2]] = np.dot(Rxz,np.array([arot[0],arot[2]]))
+        arot[1:] = np.dot(Ryz,arot[1:])
+
+        brot = copy.deepcopy(b.T[i])
+        brot[:2] = np.dot(Rxy,brot[:2])
+        brot[[0,2]] = np.dot(Rxz,np.array([brot[0],brot[2]]))
+        brot[1:] = np.dot(Ryz,brot[1:])
+
+        crot = copy.deepcopy(c.T[i])
+        crot[:2] = np.dot(Rxy,crot[:2])
+        crot[[0,2]] = np.dot(Rxz,np.array([crot[0],crot[2]]))
+        crot[1:] = np.dot(Ryz,crot[1:])
+
+        arot_dm = copy.deepcopy(a_dm.T[i])
+        arot_dm[:2] = np.dot(Rxy,arot_dm[:2])
+        arot_dm[[0,2]] = np.dot(Rxz,np.array([arot_dm[0],arot_dm[2]]))
+        arot_dm[1:] = np.dot(Ryz,arot_dm[1:])
+
+        brot_dm = copy.deepcopy(b_dm.T[i])
+        brot_dm[:2] = np.dot(Rxy,brot_dm[:2])
+        brot_dm[[0,2]] = np.dot(Rxz,np.array([brot_dm[0],brot_dm[2]]))
+        brot_dm[1:] = np.dot(Ryz,brot_dm[1:])
+
+        crot_dm = copy.deepcopy(c_dm.T[i])
+        crot_dm[:2] = np.dot(Rxy,crot_dm[:2])
+        crot_dm[[0,2]] = np.dot(Rxz,np.array([crot_dm[0],crot_dm[2]]))
+        crot_dm[1:] = np.dot(Ryz,crot_dm[1:])
+
+        rot['npart_baryon'][i] = data['npart_baryon'][i]
+
+        
+        rot['x'][i] = copy.deepcopy(rotated[0])+x0
+        rot['y'][i] = copy.deepcopy(rotated[1])+y0
+        rot['z'][i] = copy.deepcopy(rotated[2])+z0
+
+        rot['c3'][i]=crot[0]
+        rot['c2'][i]=crot[1]
+        rot['c1'][i]=crot[2]
+        rot['b3'][i]=brot[0]
+        rot['b2'][i]=brot[1]
+        rot['b1'][i]=brot[2]
+        rot['a3'][i]=arot[0]
+        rot['a2'][i]=arot[1]
+        rot['a1'][i]=arot[2]
+
+        rot['c3_dm'][i]=crot[0]
+        rot['c2_dm'][i]=crot[1]
+        rot['c1_dm'][i]=crot[2]
+        rot['b3_dm'][i]=brot[0]
+        rot['b2_dm'][i]=brot[1]
+        rot['b1_dm'][i]=brot[2]
+        rot['a3_dm'][i]=arot[0]
+        rot['a2_dm'][i]=arot[1]
+        rot['a1_dm'][i]=arot[2]
+
+    #import pdb ; pdb.set_trace()
+
+    return rot
+
+
+
+
+def symmetrise_catalogue2(data=None,mask=None,filename='/home/ssamurof/massive_black_ii/subhalo_cat-nthreshold5.fits', savedir=None, replace=False, verbose=True, nmin=2, rank=0, size=1):
+    root_folder='/physics/yfeng1/mb2'
+    snapshot='085'
+
+    if data is None:
+        data = fi.FITS(filename)['baryons'].read()
+        dm = fi.FITS(filename)['dm'].read()
+
+        #mask = (data['npart']>0) & (dm['npart']>1000) & np.isfinite(data['x']) & np.isfinite(data['y'])  & np.isfinite(data['z'])
+
+    if savedir is None:
+        savedir = filename.replace('/subhalo_cat','/cats/symmetrised/subhalo_cat').replace('.fits', '-symmetrised-%d-masswtdmedian-stellarmasscut.fits'%rank)
+    print savedir
+    if savedir==filename:
+        print "WARNING: target and input file paths are the same"
+        import pdb ; pdb.set_trace()
+
+    snap = SnapDir(snapshot, root_folder)
+    h = snap.readsubhalo()
+
+    group_ids = np.array(h['groupid'])[mask]
+    groups = np.unique(group_ids)
+
+    dt = np.dtype([('subhalo_id', int),('group_id', int), ('x', '>f8'), ('y', '>f8'), ('z', '>f8'), ('npart', '>f8'), ('lambda1', '>f8'), ('lambda2', '>f8'), ('lambda3', '>f8'), ('a1', '>f8'), ('a2', '>f8'), ('a3', '>f8'), ('b1', '>f8'), ('b2', '>f8'), ('b3', '>f8'), ('c1', '>f8'), ('c2', '>f8'), ('c3', '>f8')])
+
+    # Copy over the old data
+    outdat = np.zeros(len(data), dtype=dt)
+    for name in dt.names:
+        if (name=='subhalo_id') or (name=='group_id'):
+            continue
+        else:
+            outdat[name] = data[name]
+
+    ident = np.arange(0, len(data), 1)
+    i0=0
+    for i, g in enumerate(groups):
+
+        if i%size!=rank:
+            continue
+        
+        select = (group_ids==g)
+
+        ngal = len(data[select])
+        outdat['group_id'][select] = group_ids[select]
+        if ngal<nmin:
+            print 'Skipping halo %d as it contains <%d galaxies'%(g,nmin)
+            outdat['subhalo_id'][select] = ident[select]
+            continue
+
+        #import pdb ; pdb.set_trace()
+
+        symmetrised_halo = symmetrise_halo2(data[select], gids=group_ids[select], verbose=False, g=g)
+
+        if verbose:
+            print g, ngal
+
+        for name in data.dtype.names:
+            outdat[name][select] = symmetrised_halo[name]
+
+        outdat['subhalo_id'][select] = ident[select]
+
+        i0+=ngal
+
+    outfits = fi.FITS(savedir, 'rw')
+    outfits.write(outdat)
+    outfits[-1].write_key('EXTNAME','baryons')
+
+    print 'Done'
+    return 0
+
+
+
+
+def symmetrise_catalogue(data, mask=None, nrot=1000, savedir='/home/ssamurof/massive_black_ii/cats/symmetrised/', replace=False):
+    root_folder='/physics/yfeng1/mb2'
+    snapshot='085'
+
+    savedir+='nrot%d'%nrot
+
+    files = glob.glob('%s/*fits'%savedir)
+    groups_done = []
+    if not replace and (len(files)>0):
+        for f in files:
+            fits = fi.FITS(f) 
+            print f, len(fits)
+            for hdu in fits[1:]:
+                groups_done.append(hdu.read_header()['EXTNAME'])
+        groups_done = [g.replace(' ', '') for g in groups_done] 
+
+    if not os.path.exists(savedir):
+        os.system('mkdir -p %s'%savedir)
+
+    snap = SnapDir(snapshot, root_folder)
+    h = snap.readsubhalo()
+
+    if mask is None:
+        mask = np.one(data.size).astype(bool)
+
+    group_ids = np.array(h['groupid'])[mask]
+    groups = np.unique(group_ids)
+
+    outfits = fi.FITS('%s/symmetrised_subhalo_cat-halo%d.fits'%(savedir,groups[0]),'rw')
+
+    for i, g in enumerate(groups):
+        
+        # Check against the list of halo ids that have already been processed
+        if (not replace) and ('halo%d'%g in groups_done):
+            continue
+        else:
+            print i, g
+
+        select = (group_ids==g)
+
+        symmetrised_halo = symmetrise_halo(data[mask][select], gids=group_ids[select], nrot=nrot, verbose=False)
+
+        if (i%5000==0) and (i!=0):
+            outfits.close()
+            outfits = fi.FITS('%s/symmetrised_subhalo_cat-halo%d.fits'%(savedir,g),'rw')
+
+        outfits.write(symmetrised_halo)
+        outfits[-1].write_key('EXTNAME','halo%d'%g)
+
+    print 'Done'
+    return 0
+
 
 
 def plot_ellipse(semimaj=1,semimin=1,phi=0,x_cent=0,y_cent=0,theta_num=1e3,ax=None,plot_kwargs=None,\
@@ -114,9 +416,126 @@ def plot_ellipse(semimaj=1,semimin=1,phi=0,x_cent=0,y_cent=0,theta_num=1e3,ax=No
     if return_fig == True:
         return fig
 
+def find_centre(g):
+    """Locate the mass centroid of a particular group of galaxies"""
+    sql = 'SELECT x,y,z FROM subfind_groups WHERE groupId=%d AND snapnum=85;'%g
 
-def symmetrise_halo(data, nrot=100, gids=None):
-    print 'Will apply %d random rotations'%nrot
+    sqlserver='localhost' ; user='flanusse' ; password='mysqlpass' ; dbname='mb2_hydro'
+    unix_socket='/home/rmandelb.proj/flanusse/mysql/mysql.sock'
+    db = mdb.connect(sqlserver, user, password, dbname, unix_socket=unix_socket)
+
+    c = db.cursor()
+    c.execute(sql)
+    results = fromarrays(np.array(c.fetchall()).squeeze().T,names='x,y,z')
+    return results
+
+
+def symmetrise_halo2(data, gids=None, verbose=True, g=None):
+    if verbose:
+        print 'Will apply one random rotation per subhalo'
+    np.random.seed(9000)
+
+    # Work out the centroid about which to rotate
+    import weightedstats as ws
+    N = data['npart']
+    # Let's try something slightly different here
+    # get the centroid position from the database rather than trying to recalculate it
+    info = find_centre(g) 
+    x0, y0, z0 = info['x'], info['y'], info['z']
+
+#    xrand = np.random.choice(data['x'])
+#    yrand = np.random.choice(data['y'])
+#    zrand = np.random.choice(data['z'])
+#    sane = N>0 # stellar mass cut 
+#    #(abs(data['x']-xrand)<0.1e5) & (abs(data['y']-yrand)<0.1e5) & (abs(data['z']-zrand)<0.1e5) 
+#    x0 = ws.numpy_weighted_median(data['x'][np.isfinite(data['x']) & sane], weights=N[sane & np.isfinite(data['x'])])
+#    y0 = ws.numpy_weighted_median(data['y'][np.isfinite(data['y']) & sane], weights=N[sane & np.isfinite(data['y'])])
+#    z0 =  ws.numpy_weighted_median(data['z'][np.isfinite(data['z']) & sane], weights=N[sane & np.isfinite(data['z'])])
+    cent = np.array([x0,y0,z0])
+    positions = np.array([data['x']-x0, data['y']-y0, data['z']-z0])
+    c = np.array([data['c3'], data['c2'], data['c1']])
+    a = np.array([data['a3'], data['a2'], data['a1']])
+    b = np.array([data['b3'], data['b2'], data['b1']])
+
+    rot = np.zeros(data.size, dtype=data.dtype)
+    n = data.size
+    for name in data.dtype.names:
+        rot[name][:n] = data[name]
+
+    for i in xrange(n):
+        if verbose:
+            print i,
+        # Define a random rotation about each axis
+        alpha = 2 * np.pi * (np.random.rand() - 0.5) 
+        beta = 2 * np.pi * (np.random.rand() - 0.5) 
+        gamma = 2 * np.pi * (np.random.rand() - 0.5)
+
+        if verbose:
+            print alpha, beta, gamma
+        #alpha,beta,gamma=np.pi,0,0
+
+        # Rotate the position vector
+        #Rx = np.array([[1,0,0], [0, np.cos(alpha), -np.sin(alpha)], [0, np.sin(alpha), np.cos(alpha)]])
+        #rotated = np.dot(Rx,positions.T[i])
+        #Ry = np.array([[np.cos(beta), 0, np.sin(beta)],[0, 1, 0],[-np.sin(beta), 0, np.cos(beta)]])
+        #rotated = np.dot(Ry,rotated)
+        #Rz = np.array([[np.cos(gamma), -np.sin(gamma), 0], [np.sin(gamma), np.cos(gamma), 0], [0,0,1]])
+        #rotated = np.dot(Rz,rotated)
+
+        pos = positions.T[i]
+
+
+        # Do the symmetrisation as three independent rotations in the xy, xz and yz planes 
+        rotated = copy.deepcopy(pos)
+        Rxy = np.array([[np.cos(alpha), -np.sin(alpha)], [np.sin(alpha), np.cos(alpha)]])
+        Rxz = np.array([[np.cos(beta), -np.sin(beta)], [np.sin(beta), np.cos(beta)]])
+        Ryz = np.array([[np.cos(gamma), -np.sin(gamma)], [np.sin(gamma), np.cos(gamma)]])
+        rotated[:2] = np.dot(Rxy,rotated[:2])
+        rotated[[0,2]] = np.dot(Rxz,np.array([rotated[0],rotated[2]]))
+        rotated[1:] = np.dot(Ryz,rotated[1:])
+
+
+        # Now do the shapes in the same way
+        arot = copy.deepcopy(a.T[i])
+        arot[:2] = np.dot(Rxy,arot[:2])
+        arot[[0,2]] = np.dot(Rxz,np.array([arot[0],arot[2]]))
+        arot[1:] = np.dot(Ryz,arot[1:])
+
+        brot = copy.deepcopy(b.T[i])
+        brot[:2] = np.dot(Rxy,brot[:2])
+        brot[[0,2]] = np.dot(Rxz,np.array([brot[0],brot[2]]))
+        brot[1:] = np.dot(Ryz,brot[1:])
+
+        crot = copy.deepcopy(c.T[i])
+        crot[:2] = np.dot(Rxy,crot[:2])
+        crot[[0,2]] = np.dot(Rxz,np.array([crot[0],crot[2]]))
+        crot[1:] = np.dot(Ryz,crot[1:])
+
+        rot['npart'][i] = data['npart'][i]
+
+        
+        rot['x'][i] = copy.deepcopy(rotated[0])+x0
+        rot['y'][i] = copy.deepcopy(rotated[1])+y0
+        rot['z'][i] = copy.deepcopy(rotated[2])+z0
+
+        rot['c3'][i]=crot[0]
+        rot['c2'][i]=crot[1]
+        rot['c1'][i]=crot[2]
+        rot['b3'][i]=brot[0]
+        rot['b2'][i]=brot[1]
+        rot['b1'][i]=brot[2]
+        rot['a3'][i]=arot[0]
+        rot['a2'][i]=arot[1]
+        rot['a1'][i]=arot[2]
+
+    #import pdb ; pdb.set_trace()
+
+    return rot
+
+
+def symmetrise_halo(data, nrot=100, gids=None, verbose=True):
+    if verbose:
+        print 'Will apply %d random rotations'%nrot
     np.random.seed(9000)
 
     # Work out the centroid about which to rotate
@@ -137,13 +556,15 @@ def symmetrise_halo(data, nrot=100, gids=None):
 
 
     for i in xrange(nrot):
-        print i,
+        if verbose:
+            print i,
         # Define a random rotation about each axis
         alpha = 2 * np.pi * (np.random.rand() - 0.5) 
         beta = 2 * np.pi * (np.random.rand() - 0.5) 
         gamma = 2 * np.pi * (np.random.rand() - 0.5)
 
-        print alpha, beta, gamma
+        if verbose:
+            print alpha, beta, gamma
         #alpha,beta,gamma=np.pi,0,0
 
         #import pdb ; pdb.set_trace()
@@ -185,8 +606,6 @@ def symmetrise_halo(data, nrot=100, gids=None):
         rot['a3'][(i+1)*n:(i+2)*n]=arot[0]
         rot['a2'][(i+1)*n:(i+2)*n]=arot[1]
         rot['a1'][(i+1)*n:(i+2)*n]=arot[2]
-
-    import pdb ; pdb.set_trace()
 
     return rot
 
@@ -281,23 +700,28 @@ def add_col(rec, name, arr=[], dtype=None, verbose=False):
     return newrec
 
 
+def construct_random_cat(data, mask=None, format='halotools', f=1, fixed_bounds=True):
+    """Construct a catalogue of random points drawn from the same volume as the data provided."""
 
-def construct_random_cat(data, mask=None, format='halotools', f=1):
-	"""Construct a catalogue of random points drawn from the same volume as the data provided."""
+    if f!=1:
+        print 'Random point multiplier: %3.3f'%f
+    if mask is None:
+        mask = np.ones(data.size).astype(bool)
+    if not fixed_bounds:
+        rx = (np.random.random(size=int(data['x'][mask].size*f)) - 0.5) * (data['x'][mask].max()-data['x'][mask].min()) + data['x'][mask].mean()
+        ry = (np.random.random(size=int(data['x'][mask].size*f)) - 0.5) * (data['y'][mask].max()-data['y'][mask].min()) + data['y'][mask].mean()
+        rz = (np.random.random(size=int(data['x'][mask].size*f)) - 0.5) * (data['z'][mask].max()-data['z'][mask].min()) + data['z'][mask].mean()
+    else:
+        print 'Enforcing box edges'
+        rx = np.random.random(size=int(data['x'][mask].size*f)) * 100000.
+        ry = np.random.random(size=int(data['x'][mask].size*f)) * 100000.
+        rz = np.random.random(size=int(data['x'][mask].size*f)) * 100000.
 
-	if f!=1:
-		print 'Random point multiplier: %3.3f'%f
-	if mask is None:
-		mask = np.ones(data.size).astype(bool)
-	rx = (np.random.random(size=int(data['x'][mask].size*f)) - 0.5) * (data['x'][mask].max()-data['x'][mask].min()) + data['x'][mask].mean()
-	ry = (np.random.random(size=int(data['x'][mask].size*f)) - 0.5) * (data['y'][mask].max()-data['y'][mask].min()) + data['y'][mask].mean()
-	rz = (np.random.random(size=int(data['x'][mask].size*f)) - 0.5) * (data['z'][mask].max()-data['z'][mask].min()) + data['z'][mask].mean()
+    if format.lower()=='halotools':
+        return pretending.return_xyz_formatted_array(rx, ry, rz)
 
-	if format.lower()=='halotools':
-		return pretending.return_xyz_formatted_array(rx, ry, rz)
-
-	elif format.lower()=='treecorr':
-		return treecorr.Catalog(x=rx, y=ry, z=rz)
+    elif format.lower()=='treecorr':
+        return treecorr.Catalog(x=rx, y=ry, z=rz)
 
 
 def choose_cs_mask(data, ctype):
@@ -385,6 +809,35 @@ def footprint_sub(ra,dec,rasep,decsep,nside,fig, cmap='none'):
     ymax+=r/5.
     ax.set_ylim(ymin,ymax)
     return
+
+def gather_mpi_output(filestring, hdu=-1, name='subhalo_id', save=False):
+    files = glob.glob(filestring)
+    print 'Found %d files'%len(files)
+    dat = fi.FITS(files[0])[hdu].read()
+    for f in files:
+        print f,
+        info = fi.FITS(f)[hdu].read()
+        mask = (info[name]!=0)
+        print '%d objects'%len(info[name][mask])
+        dat[mask] = info[mask]
+
+    if save:
+        print 'Saving results as single FITS file.'
+        out = fi.FITS('bundled_fits.fits', 'rw')
+        out.write(dat)
+        if type(hdu) is str:
+            out[-1].write_key('EXTNAME', hdu)
+        out.close()
+    return dat
+
+def export_treecorr_output(corr, filename):
+    R = np.exp(corr.logr)
+    xi = corr.xi
+
+    out = np.hstack(R,xi)
+    print 'Saving %s'%filename
+    np.savetxt(filename, out.T)
+
 
 def project_to_sky(data):
     r = np.sqrt(data['x']*data['x'] + data['y']*data['y'] + data['z']*data['z'])
