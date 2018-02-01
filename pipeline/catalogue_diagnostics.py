@@ -12,6 +12,7 @@ parser.add_argument('--catalogue', '-c', type=str, action='store')
 args = parser.parse_args()
 
 data = fi.FITS(args.catalogue)[-1].read()
+import pdb ; pdb.set_trace()
 
 
 # Basic mass distributions, split into centrals and satellites
@@ -94,8 +95,84 @@ plt.savefig('/physics2/ssamurof/massive_black_ii/plots/diagnostics/ellipticity-c
 
 
 
-
-
+## Plot out the ellipticities of the galaxies
+## using both definitions, so we can compare with
+## the literature
+## but also not use polarisation for the final result
+#
+#phi = np.arctan2(baryons['a2_2d'][mask], baryons['a1_2d'][mask])
+#qa = np.sqrt(baryons['lambda2_2d'][mask]/baryons['lambda1_2d'][mask])
+#e_alt = (qa*qa-1)/(qa*qa+1)
+#e_alt[np.invert(np.isfinite(e_alt))] = 0.0
+#e1_alt = e_alt * np.cos(2*phi)
+#e1_alt = e1_alt[np.isfinite(e1_alt)]
+#e2_alt = e_alt * np.sin(2*phi)
+#e2_alt = e2_alt[np.isfinite(e2_alt)]
+#
+#e1 = (qa-1)/(qa+1) * np.cos(2*phi)
+#e1 = e1[np.isfinite(e1)]
+#e2 = (qa-1)/(qa+1) * np.sin(2*phi)
+#e2 = e2[np.isfinite(e2)]
+#
+#
+#H1, b = np.histogram(e1[e1!=0], bins=np.linspace(-0.85,0.85,100), normed=1)
+#H2, b = np.histogram(e2[e2!=0], bins=np.linspace(-0.85,0.85,100), normed=1)
+#H10, b = np.histogram(e1_alt[e1_alt!=0], bins=np.linspace(-0.85,0.85,100), normed=1)
+#H20, b = np.histogram(e2_alt[e2_alt!=0], bins=np.linspace(-0.85,0.85,100), normed=1)
+#
+#xe = (b[:-1]+b[1:])/2
+#
+#plt.close()
+#plt.switch_backend('agg')
+#plt.plot(xe, H1, label='$e_1$ (rms $%2.2f$)'%np.std(e1[np.isfinite(e1) & (e1!=0) ]), color='purple', lw=2)
+#plt.plot(xe, H2, label='$e_2$ (rms $%2.2f$)'%np.std(e2[np.isfinite(e2) & (e2!=0) ]), color='plum', lw=2)
+#plt.plot(xe, H10, label='$\chi_1$ (rms $%2.2f$)'%np.std(e1_alt[np.isfinite(e1_alt) & (e1_alt!=0) ]), color='purple', lw=2, ls='--')
+#plt.plot(xe, H20, label='$\chi_2$ (rms $%2.2f$)'%np.std(e2_alt[np.isfinite(e2_alt) & (e2_alt!=0) ]), color='plum', lw=2, ls='--')
+#plt.xlabel('Ellipticity')
+#plt.yticks(visible=False)
+#plt.legend()
+#plt.ylim(ymin=0)
+#plt.xlim(-0.85,0.85)
+#plt.savefig('/physics2/ssamurof/massive_black_ii/plots/diagnostics/baryons_ellipticity_comp.png')
+#
+#
+#
+#
+#phi = np.arctan2(dm['a2_2d'][mask], dm['a1_2d'][mask])
+#qa = np.sqrt(dm['lambda2_2d'][mask]/dm['lambda1_2d'][mask])
+#e_alt = (qa*qa-1)/(qa*qa+1)
+#e_alt[np.invert(np.isfinite(e_alt))] = 0.0
+#e1_alt = e_alt * np.cos(2*phi)
+#e1_alt = e1_alt[np.isfinite(e1_alt)]
+#e2_alt = e_alt * np.sin(2*phi)
+#e2_alt = e2_alt[np.isfinite(e2_alt)]
+#
+#e1 = (qa-1)/(qa+1) * np.cos(2*phi)
+#e1 = e1[np.isfinite(e1)]
+#e2 = (qa-1)/(qa+1) * np.sin(2*phi)
+#e2 = e2[np.isfinite(e2)]
+#
+#
+#H1, b = np.histogram(e1[e1!=0], bins=np.linspace(-0.85,0.85,100), normed=1)
+#H2, b = np.histogram(e2[e2!=0], bins=np.linspace(-0.85,0.85,100), normed=1)
+#H10, b = np.histogram(e1_alt[e1_alt!=0], bins=np.linspace(-0.85,0.85,100), normed=1)
+#H20, b = np.histogram(e2_alt[e2_alt!=0], bins=np.linspace(-0.85,0.85,100), normed=1)
+#
+#xe = (b[:-1]+b[1:])/2
+#
+#plt.close()
+#plt.switch_backend('agg')
+#plt.plot(xe, H1, label='$e_1$ (rms $%2.2f$)'%np.std(e1[np.isfinite(e1) & (e1!=0) ]), color='purple', lw=2)
+#plt.plot(xe, H2, label='$e_2$ (rms $%2.2f$)'%np.std(e2[np.isfinite(e2) & (e2!=0) ]), color='plum', lw=2)
+#plt.plot(xe, H10, label='$\chi_1$ (rms $%2.2f$)'%np.std(e1_alt[np.isfinite(e1_alt) & (e1_alt!=0) ]), color='purple', lw=2, ls='--')
+#plt.plot(xe, H20, label='$\chi_2$ (rms $%2.2f$)'%np.std(e2_alt[np.isfinite(e2_alt) & (e2_alt!=0) ]), color='plum', lw=2, ls='--')
+#plt.xlabel('Ellipticity')
+#plt.yticks(visible=False)
+#plt.legend()
+#plt.ylim(ymin=0)
+#plt.xlim(-0.85,0.85)
+#plt.savefig('/physics2/ssamurof/massive_black_ii/plots/diagnostics/dm_ellipticity_comp.png')
+#
 
 
 

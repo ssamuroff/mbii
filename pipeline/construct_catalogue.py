@@ -112,7 +112,7 @@ class catalogue:
 	def __init__(self):
 		print 'Set up subhalo catalogue'
 
-	def build_selection_mask(self, cuts, baryons, dm, verbosity=1):
+	def build_selection_mask(self, cuts, baryons, dm, h, verbosity=1):
 		if verbosity>0:
 			"Constructing subhalo selection cut"
 
@@ -125,12 +125,19 @@ class catalogue:
 			if (verbosity>0):
 				print '%s < %s < %s'%(lower, name, upper)
 
-			if '_dm' in name:
-				sel = (dm[name.replace('_dm', '')]>float(upper)) | (dm[name.replace('_dm', '')]<float(lower))
-				sel = sel | np.invert(np.isfinite(dm[name.replace('_dm', '')]))
-			elif '_baryon' in name:
-				sel = (baryons[name.replace('_baryon', '')]>float(upper)) | (baryons[name.replace('_baryon', '')]<float(lower))
-				sel = sel | np.invert(np.isfinite(baryons[name.replace('_baryon', '')]))
+			if (name=='npart_dm'):
+				n = h['lenbytype'].T[0]
+				sel = (n>float(upper)) | (n<float(lower))
+				sel = sel | np.invert(np.isfinite(n))
+			elif (name=='npart_baryon'):
+				n = h['lenbytype'].T[4]
+				sel = (n>float(upper)) | (n<float(lower))
+				sel = sel | np.invert(np.isfinite(n))
+			if (name in ['x', 'y', 'z']):
+				lookup = {'x':0, 'y':1, 'z':2}
+				p = h['pos'].T[lookup[name]]
+				sel = (p>float(upper)) | (p<float(lower))
+				sel = sel | np.invert(np.isfinite(p))
 			else:
 				sel = (baryons[name]>float(upper)) | (baryons[name]<float(lower))
 				sel = sel | np.invert(np.isfinite(baryons[name]))
@@ -198,18 +205,6 @@ class catalogue:
 		    import pdb ; pdb.set_trace()
 
 		
-
-
-
-
-
-#		for ih in np.unique(self.array['halo_id']):
-#
-#			rh = self.array['rh'][(self.array['halo_id']==ih)]
-#			Rmin = rh.min()
-#			ic = np.argwhere(rh==Rmin)
-#			self.array['central'][ic] = 1
-
 	def export(self, outpath):
 
 		# Check whether the file exists already, and if so remove the old version
@@ -255,7 +250,7 @@ dm = fi.FITS(config['dm_shapes'])['dm'].read()
 # Now create an array in which to store the required columns
 cat = catalogue()
 # Impose the selection cuts, as specified in the configuration file
-mask = cat.build_selection_mask(config['cuts'], baryons, dm, verbosity=args.verbosity)
+mask = cat.build_selection_mask(config['cuts'], baryons, dm, h, verbosity=args.verbosity)
 mask = mask & np.isfinite(h['pos'].T[0]) & np.isfinite(h['pos'].T[1]) & np.isfinite(h['pos'].T[2])
 
 cat.array = np.zeros(baryons[mask].size, dtype=dt)
