@@ -118,7 +118,7 @@ class catalogue:
 
 		self.verbosity = verbosity
 
-		mask = np.zeros(baryons.size)
+		mask = np.ones(baryons.size)
 		for name in cuts.keys():
 			lower, upper = cuts[name].split()
 
@@ -126,15 +126,15 @@ class catalogue:
 				print '%s < %s < %s'%(lower, name, upper)
 
 			if '_dm' in name:
-				sel = (dm[name.replace('_dm', '')]<float(upper)) & (dm[name.replace('_dm', '')]>float(lower))
-				sel = sel & np.isfinite(dm[name.replace('_dm', '')])
+				sel = (dm[name.replace('_dm', '')]>float(upper)) | (dm[name.replace('_dm', '')]<float(lower))
+				sel = sel | np.invert(np.isfinite(dm[name.replace('_dm', '')]))
 			elif '_baryon' in name:
-				sel = (baryons[name.replace('_baryon', '')]<float(upper)) & (baryons[name.replace('_baryon', '')]>float(lower))
-				sel = sel & np.isfinite(baryons[name.replace('_baryon', '')])
+				sel = (baryons[name.replace('_baryon', '')]>float(upper)) | (baryons[name.replace('_baryon', '')]<float(lower))
+				sel = sel | np.invert(np.isfinite(baryons[name.replace('_baryon', '')]))
 			else:
-				sel = (baryons[name]<float(upper)) & (baryons[name]>float(lower))
-				sel = sel & np.isfinite(baryons[name])
-			mask[sel] = 1
+				sel = (baryons[name]>float(upper)) | (baryons[name]<float(lower))
+				sel = sel | np.invert(np.isfinite(baryons[name]))
+			mask[sel] = 0
 
 		self.mask = mask.astype(bool)
 
@@ -161,7 +161,6 @@ class catalogue:
 
 		contam_mask = np.isfinite(h['pos'].T[1]) & (h['pos'].T[0]<100000) & (h['pos'].T[1]<100000) & (h['pos'].T[2]<100000)
 
-		import pdb ; pdb.set_trace()
 		cflag = centralflag[contam_mask[mask]]
 
 		self.array['central'] = cflag
@@ -314,7 +313,6 @@ e = (q-1)/(q+1)
 e[np.invert(np.isfinite(e))] = 0.0
 cat.array['e1_dm'] = e * np.cos(2*phi)
 cat.array['e2_dm'] = e * np.sin(2*phi)
-
 
 # Now find the associated halo per galaxy
 # We'll need to read out this information from the database

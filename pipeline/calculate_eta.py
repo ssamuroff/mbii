@@ -37,7 +37,7 @@ def compute(options):
 	c1c1.process(cat1,cat1)
 	util.export_treecorr_output('%s/ED_corr_11%s.txt'%(options['2pt']['savedir'], suffix), c1c1)
 
-	if split:
+	if splitflag:
 		print '22'
 		c2c2.process(cat2,cat2)
 		util.export_treecorr_output('%s/ED_corr_22%s.txt'%(options['2pt']['savedir'], suffix), c2c2)

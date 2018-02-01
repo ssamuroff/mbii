@@ -52,7 +52,6 @@ def symmetrise_catalogue3(data=None,mask=None,filename='/home/ssamurof/massive_b
         outdat['halo_id'][select] = group_ids[select]
         if ngal<nmin:
             print 'Skipping halo %d as it contains <%d galaxies'%(g,nmin)
-            outdat['subhalo_id'][select] = ident[select]
             continue
 
         symmetrised_halo = symmetrise_halo3(data[select], gids=group_ids[select], verbose=False, g=g)
@@ -65,8 +64,8 @@ def symmetrise_catalogue3(data=None,mask=None,filename='/home/ssamurof/massive_b
 
         i0+=ngal
 
-    outfits = fi.FITS(savedir, 'rw')
-    outfits.write(outdat.replace('.fits', '%d.fits'%rank))
+    outfits = fi.FITS(savedir.replace('.fits', '%d.fits'%rank), 'rw')
+    outfits.write(outdat)
     outfits.close()
 
     print 'Done'
@@ -830,11 +829,11 @@ def gather_mpi_output(filestring, hdu=-1, name='subhalo_id', save=False):
         out.close()
     return dat
 
-def export_treecorr_output(corr, filename):
+def export_treecorr_output(filename,corr):
     R = np.exp(corr.logr)
     xi = corr.xi
 
-    out = np.hstack(R,xi)
+    out = np.vstack((R,xi,corr.weight))
     print 'Saving %s'%filename
     np.savetxt(filename, out.T)
 
