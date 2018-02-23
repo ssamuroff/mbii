@@ -6,10 +6,10 @@ import pylab as plt
 import treecorr
 #import tools.plots as pl
 plt.switch_backend('pdf')
-import halotools as ht
-import halotools.mock_observables as pretending
+#import halotools as ht
+#import halotools.mock_observables as pretending
 import mbii.lego_tools as util
-import mbii.basic_simulation_info as info
+#import mbii.basic_simulation_info as info
 import tools.diagnostics as di
 import fitsio as fi
 
@@ -893,7 +893,7 @@ class halos(mbdb):
 import math
 import fitsio as fi
 
-def classify_subhalos(data):
+def classify_subhalos(data, snapshot=85):
     # Setup the database connection
     sqlserver='localhost'
     user='flanusse'
@@ -901,49 +901,43 @@ def classify_subhalos(data):
     dbname='mb2_hydro'
     unix_socket='/home/rmandelb.proj/flanusse/mysql/mysql.sock'
     db = mdb.connect(sqlserver, user, password, dbname, unix_socket=unix_socket)
-    names = ['subfindId', 'snapnum', 'haloId', 'groupId', 'central', 'mass', 'len', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'vdisp', 'vcirc', 'rcirc', 'm_gas', 'm_dm', 'm_star', 'm_bh'] 
+    names = ['groupId','central']
+    add_names = ['x', 'y', 'z'] 
 
-    dt = [('subfindId',int),
-    ('snapnum',int),
-    ('haloId',int),
-    ('groupId',int),
-    ('central',int),
-    ('mass',float),
-    ('len',int),
-    ('x',float),
-    ('y',float),
-    ('z',float),
-    ('vx',float),
-    ('vy',float),
-    ('vz',float),
-    ('vdisp',float),
-    ('vcirc',float), 
-    ('rcirc',float),
-    ('m_gas',float),
-    ('m_dm',float),
-    ('m_star',float),
-    ('m_bh',float)]
+    dt = [('groupId',int),('central',int)] #, ('x',float), ('y',float), ('z',float)]
 
     out = np.zeros(len(data), dtype=dt)
 
     for i, subhalo in enumerate(data):
-        sql = "SELECT * FROM subfind_halos WHERE len=%d AND groupId=%d;"%(subhalo['len'], math.ceil(subhalo['groupid']))
+        sql = "SELECT groupId, central FROM subfind_halos WHERE snapnum=%d AND len=%d AND groupId=%d;"%(snapshot, subhalo['len'], math.ceil(subhalo['groupid']))
 
         #print sql
         cursor = db.cursor()
         cursor.execute(sql)
 
-        try:
-            
+        import pdb ; pdb.set_trace()
+
+        try:  
             results = fromarrays(np.array(cursor.fetchall()).squeeze().T, names=names)
         except:
             print 'Could not match results'
+            import pdb ; pdb.set_trace()
             continue
         print i, results
 
         if (results.size>1):
+            # Now try gain, also matching by position
+            sql = "SELECT groupId, central, x, y, z FROM subfind_halos WHERE snapnum=%d AND len=%d AND groupId=%d;"%(snapshot, subhalo['len'], math.ceil(subhalo['groupid']))
+            cursor = db.cursor()
+            cursor.execute(sql)
+            results = fromarrays(np.array(cursor.fetchall()).squeeze().T, names=names+add_names)
+
+            # Find something in approximately the right 3D position
             select = np.isclose(results['x'],subhalo['pos'][0]) & np.isclose(results['y'],subhalo['pos'][1]) & np.isclose(results['z'],subhalo['pos'][2])
             results = results[select]
+        if (results.size>1):
+            # If that doesn't solve the problem then pause here
+            import pdb ; pdb.set_trace()
         
         for colname in results.dtype.names:
             out[colname][i] = results[colname]
@@ -953,8 +947,68 @@ def classify_subhalos(data):
     outfits.close()
 
 
+def identify_centrals(data, mask=None, filename='subhalo_central_flags-v2.fits', rank=0, size=1):
+    
+    groups = np.unique(data['groupid'])
+    Ngrp = len(groups)
+    print 'Will process data for %d groups'%Ngrp
+    i0=0
+
+    if mask is None:
+        mask = np.isfinite(data['pos'].T[0]) & np.isfinite(data['pos'].T[1]) & np.isfinite(data['pos'].T[2])
+    flags = np.zeros(data.size, dtype=[('subhalo_id',int),('central1',int),('central2',int),('central3',int)])
+    ident = np.arange(0, len(data), 1)
 
 
+    for i, group in enumerate(groups):
+
+        if i%size!=rank:
+            continue
+
+        select = (data['groupid'][mask]==group)
+        N = len(data['groupid'][mask][select])
+        print i, group, N
+
+        if N<2:
+            continue
+
+        M = data['mass'][mask][select]
+        xrand = np.random.choice(data['pos'].T[0][mask][select])
+        yrand = np.random.choice(data['pos'].T[1][mask][select])
+        zrand = np.random.choice(data['pos'].T[2][mask][select])
+        import weightedstats as ws
+        sane = (abs(data['pos'].T[0][mask][select]-xrand)<0.1e5) & (abs(data['pos'].T[1][mask][select]-yrand)<0.1e5) & (abs(data['pos'].T[2][mask][select]-zrand)<0.1e5) 
+        x0 = ws.numpy_weighted_median(data['pos'].T[0][mask][select][np.isfinite(data['pos'].T[0][mask][select]) & sane], weights=M[sane & np.isfinite(data['pos'].T[0][mask][select])])
+        y0 = ws.numpy_weighted_median(data['pos'].T[1][mask][select][np.isfinite(data['pos'].T[1][mask][select]) & sane], weights=M[sane & np.isfinite(data['pos'].T[1][select])])
+        z0 = ws.numpy_weighted_median(data['pos'].T[2][mask][select][np.isfinite(data['pos'].T[2][mask][select]) & sane], weights=M[sane & np.isfinite(data['pos'].T[2][mask][select])])
+
+        #x0 = np.sum(M*data['pos'].T[0][mask][select])/np.sum(M)
+        #y0 = np.sum(M*data['pos'].T[1][mask][select])/np.sum(M)
+        #z0 = np.sum(M*data['pos'].T[2][mask][select])/np.sum(M)
+
+        R = np.sqrt((data['pos'].T[0][mask][select]-x0)**2 + (data['pos'].T[1][mask][select]-y0)**2 + (data['pos'].T[2][mask][select]-z0)**2)
+        select_cent1 = R==R[np.isfinite(R)].min()
+        icent1 = ident[mask][select][select_cent1][0]
+        flags['central1'][icent1] = 1
+
+        select_cent2 = M==M[np.isfinite(M)].max()
+        icent2 = ident[mask][select][select_cent2][0]
+        flags['central2'][icent2] = 1
+
+        Mb = data['massbytype'].T[4][mask][select]
+        select_cent3 = Mb==Mb[np.isfinite(Mb)].max()
+        icent3 = ident[mask][select][select_cent2][0]
+        flags['central3'][icent3] = 1
+        #import pdb ; pdb.set_trace()
+
+        i0+=N
+
+    print 'Saving flags', filename
+    outfits = fi.FITS(filename.replace('.fits','-%d.fits'%rank), 'rw')
+    outfits.write(flags)
+    outfits.close()
+
+    return flags
 
 
 

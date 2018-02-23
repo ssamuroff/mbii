@@ -21,9 +21,13 @@ def compute_inertia_tensors(snap, reduced=False, inclusion_threshold=5):
     mb = snap.load(4, 'mass', h)
     
     eigvectors = np.zeros((2, len(h), 3, 3))
+    eigvectors_2d = np.zeros((2, len(h), 2, 2))
     eigvalues  = np.zeros((2, len(h), 3))
-    centroids  = np.zeros((2, len(h), 3))
+    eigvalues_2d  = np.zeros((2, len(h), 2))
+#    centroids  = np.zeros((2, len(h), 3))
     length  = np.zeros((2, len(h)))
+
+    subhalo_centroids = np.array(h['pos'].T)
  
     # Will compute for each halo the inertia tensor
     for i in range(len(h)):
@@ -36,9 +40,16 @@ def compute_inertia_tensors(snap, reduced=False, inclusion_threshold=5):
             weights = np.ones(len(x[i]))
             normFactor = np.double(len(x[i].T[0]))
 
-            x0 = x[i].T[0] - np.dot(x[i].T[0],weights)/normFactor
-            x1 = x[i].T[1] - np.dot(x[i].T[1],weights)/normFactor
-            x2 = x[i].T[2] - np.dot(x[i].T[2],weights)/normFactor
+            # Check each coordinate as calculated is finite
+            # If not, use the weighted mean position of the dark matter particles instead
+            for j in [0,1,2]:
+                if not np.isfinite(subhalo_centroids[j][i]):
+                    subhalo_centroids[j][i]=np.dot(x[i].T[j],weights)/normFactor
+
+            # Use the centre of the subhalo's potential well as the centroid here
+            x0 = x[i].T[0] - subhalo_centroids[0][i] #np.dot(x[i].T[0],weights)/normFactor
+            x1 = x[i].T[1] - subhalo_centroids[1][i] #np.dot(x[i].T[1],weights)/normFactor
+            x2 = x[i].T[2] - subhalo_centroids[2][i] #np.dot(x[i].T[2],weights)/normFactor
 
             # Beware the ambiguous notation here - 
             # These weights define the difference between reduced and standard inertia tensors.
@@ -64,17 +75,18 @@ def compute_inertia_tensors(snap, reduced=False, inclusion_threshold=5):
             tens[0, 1] = tens[1, 0]
             tens[1, 2] = tens[2, 1]
 
-            # Evaluate the mass-weighted centroid along each axis
-            X = np.trapz(m[i]*x[i].T[0], x[i].T[0])/np.trapz(m[i], x[i].T[0])
-            Y = np.trapz(m[i]*x[i].T[1], x[i].T[1])/np.trapz(m[i], x[i].T[1])
-            Z = np.trapz(m[i]*x[i].T[2], x[i].T[2])/np.trapz(m[i], x[i].T[2])
-
             # Compute the eigenvalues of the halos and store the outputs
-            w, v = np.linalg.eigh(tens)
+            try:
+                w, v = np.linalg.eigh(tens)
+            except: 
+                import pdb ; pdb.set_trace()
+            w2d, v2d = np.linalg.eigh(tens[:2,:2])
             eigvalues[0,i] = w
+            eigvalues_2d[0,i] = w2d
             eigvectors[0,i] = v
+            eigvectors_2d[0,i] = v2d
             length[0,i] = normFactor
-            centroids[0,i] = np.array([X,Y,Z])
+         #   centroids[0,i] = np.array([subhalo_centroids[0][i],subhalo_centroids[1][i],subhalo_centroids[2][i]])
 
         if (len(xb[i]) < inclusion_threshold):
             pass
@@ -83,9 +95,13 @@ def compute_inertia_tensors(snap, reduced=False, inclusion_threshold=5):
             weights = np.ones(len(xb[i]))
             normFactor = np.double(len(xb[i].T[0]))
 
-            x0 = xb[i].T[0] - np.dot(xb[i].T[0],weights)/normFactor
-            x1 = xb[i].T[1] - np.dot(xb[i].T[1],weights)/normFactor
-            x2 = xb[i].T[2] - np.dot(xb[i].T[2],weights)/normFactor
+            for j in [0,1,2]:
+                if not np.isfinite(subhalo_centroids[j][i]):
+                    subhalo_centroids[j][i]=np.dot(xb[i].T[j],weights)/normFactor
+
+            x0 = xb[i].T[0] - subhalo_centroids[0][i] #np.dot(x[i].T[0],weights)/normFactor
+            x1 = xb[i].T[1] - subhalo_centroids[1][i] #np.dot(x[i].T[1],weights)/normFactor
+            x2 = xb[i].T[2] - subhalo_centroids[2][i] #np.dot(x[i].T[2],weights)/normFactor
 
             if reduced:
                 wt = (x0*x0 + x1*x1 + x2*x2)
@@ -107,33 +123,39 @@ def compute_inertia_tensors(snap, reduced=False, inclusion_threshold=5):
             tens[0, 1] = tens[1, 0]
             tens[1, 2] = tens[2, 1]
 
-            # Evaluate the mass-weighted centroid along each axis
-            X = np.trapz(mb[i]*xb[i].T[0], xb[i].T[0])/np.trapz(mb[i], xb[i].T[0])
-            Y = np.trapz(mb[i]*xb[i].T[1], xb[i].T[1])/np.trapz(mb[i], xb[i].T[1])
-            Z = np.trapz(mb[i]*xb[i].T[2], xb[i].T[2])/np.trapz(mb[i], xb[i].T[2])
-
             # Compute the eigenvalues of the halos
-            try:
+            try: 
                 w, v = np.linalg.eigh(tens)
             except:
                 import pdb ; pdb.set_trace()
+            w2d, v2d = np.linalg.eigh(tens[:2,:2])
+            
             eigvalues[1,i] = w
+            eigvalues_2d[1,i] = w2d
             eigvectors[1,i] = v
+            eigvectors_2d[1,i] = v2d
             length[1,i] = normFactor
-            centroids[1,i] = np.array([X,Y,Z])
+          
+          #  centroids[1,i] = np.array([X,Y,Z])
 
 
 
     print "Saving output"
     if reduced:
-        out = fi.FITS('/home/ssamurof/massive_black_ii/subhalo_cat_reduced-nthreshold%d.fits'%(inclusion_threshold),'rw')
+        out = fi.FITS('/physics2/ssamurof/massive_black_ii/subhalo_cat_reduced-nthreshold%d-proj+3d.fits'%(inclusion_threshold),'rw')
     else:
-        out = fi.FITS('/home/ssamurof/massive_black_ii/subhalo_cat-nthreshold%d.fits'%(inclusion_threshold),'rw')
+        out = fi.FITS('/physics2/ssamurof/massive_black_ii/subhalo_cat-nthreshold%d-proj+3d.fits'%(inclusion_threshold),'rw')
 
-    dat=np.zeros(len(h), dtype=[('x', float), ('y', float), ('z', float), ('npart',float), ('lambda1', float), ('lambda2', float), ('lambda3', float), ('a1', float), ('a2', float), ('a3', float), ('b1', float), ('b2', float), ('b3', float), ('c1', float), ('c2', float), ('c3', float)])
+    dat=np.zeros(len(h), dtype=[('x', float), ('y', float), ('z', float), ('npart',float), ('lambda1', float), ('lambda2', float), ('lambda3', float), ('a1', float), ('a2', float), ('a3', float), ('b1', float), ('b2', float), ('b3', float), ('c1', float), ('c2', float), ('c3', float), ('lambda1_2d', float), ('lambda2_2d', float), ('a1_2d', float), ('a2_2d', float), ('b1_2d', float), ('b2_2d', float)])
     dat['lambda1'] = eigvalues[0].T[0]
     dat['lambda2'] = eigvalues[0].T[1]
     dat['lambda3'] = eigvalues[0].T[2]
+    dat['lambda1_2d'] = eigvalues_2d[0].T[0]
+    dat['lambda2_2d'] = eigvalues_2d[0].T[1]
+    dat['a1_2d'] = eigvectors_2d[0].T[0,0]
+    dat['a2_2d'] = eigvectors_2d[0].T[0,1]
+    dat['b1_2d'] = eigvectors_2d[0].T[1,0]
+    dat['b2_2d'] = eigvectors_2d[0].T[1,1]
     dat['a1'] = eigvectors[0].T[0,0]
     dat['a2'] = eigvectors[0].T[0,1]
     dat['a3'] = eigvectors[0].T[0,2]
@@ -143,18 +165,24 @@ def compute_inertia_tensors(snap, reduced=False, inclusion_threshold=5):
     dat['c1'] = eigvectors[0].T[2,0]
     dat['c2'] = eigvectors[0].T[2,1]
     dat['c3'] = eigvectors[0].T[2,2]
-    dat['x'] = centroids[0].T[0]
-    dat['y'] = centroids[0].T[1]
-    dat['z'] = centroids[0].T[2]
+    dat['x'] = subhalo_centroids[0]
+    dat['y'] = subhalo_centroids[1]
+    dat['z'] = subhalo_centroids[2]
     dat['npart'] = length[0]
 
     out.write(dat)
     out[-1].write_key('EXTNAME', 'dm')
 
-    dat2=np.zeros(len(h), dtype=[('x', float), ('y', float), ('z', float), ('npart',float), ('lambda1', float), ('lambda2', float), ('lambda3', float), ('a1', float), ('a2', float), ('a3', float), ('b1', float), ('b2', float), ('b3', float), ('c1', float), ('c2', float), ('c3', float)])
+    dat2=np.zeros(len(h), dtype=[('x', float), ('y', float), ('z', float), ('npart',float), ('lambda1', float), ('lambda2', float), ('lambda3', float), ('a1', float), ('a2', float), ('a3', float), ('b1', float), ('b2', float), ('b3', float), ('c1', float), ('c2', float), ('c3', float), ('lambda1_2d', float), ('lambda2_2d', float), ('a1_2d', float), ('a2_2d', float), ('b1_2d', float), ('b2_2d', float)])
     dat2['lambda1'] = eigvalues[1].T[0]      
     dat2['lambda2'] = eigvalues[1].T[1]
     dat2['lambda3'] = eigvalues[1].T[2]
+    dat2['lambda1_2d'] = eigvalues_2d[1].T[0]
+    dat2['lambda2_2d'] = eigvalues_2d[1].T[1]
+    dat2['a1_2d'] = eigvectors_2d[1].T[0,0]
+    dat2['a2_2d'] = eigvectors_2d[1].T[0,1]
+    dat2['b1_2d'] = eigvectors_2d[1].T[1,0]
+    dat2['b2_2d'] = eigvectors_2d[1].T[1,1]
     dat2['a1'] = eigvectors[1].T[0,0]
     dat2['a2'] = eigvectors[1].T[0,1]
     dat2['a3'] = eigvectors[1].T[0,2]
@@ -164,9 +192,9 @@ def compute_inertia_tensors(snap, reduced=False, inclusion_threshold=5):
     dat2['c1'] = eigvectors[1].T[2,0]
     dat2['c2'] = eigvectors[1].T[2,1]
     dat2['c3'] = eigvectors[1].T[2,2]
-    dat2['x'] = centroids[1].T[0]
-    dat2['y'] = centroids[1].T[1]
-    dat2['z'] = centroids[1].T[2]
+    dat2['x'] = subhalo_centroids[0]
+    dat2['y'] = subhalo_centroids[1]
+    dat2['z'] = subhalo_centroids[2]
     dat2['npart'] = length[1]
 
     out.write(dat2)

@@ -23,10 +23,10 @@ errors:
 
 
 2pt:
-    ctypes : giplus_3d ed gg
+    ctypes : ed gg
     errors: True
-    shapes : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v5-ndm300-nst1000.fits
-    savedir: /physics2/ssamurof/massive_black_ii/2pt/ns1000_nd300/
+    shapes : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v5-ndm300-nst1000-symmetrised_pos.fits
+    savedir: /physics2/ssamurof/massive_black_ii/2pt/ns1000_nd300/symmetrised_pos
     split : central
     split_val : 1
     rmin : 0.1

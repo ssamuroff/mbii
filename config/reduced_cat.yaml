@@ -1,5 +1,5 @@
 cuts :
-    npart_dm : 1000 1e60
+    npart_dm : 300 1e60
     npart_baryon : 300 1e60
     x : 0. 100000.
     y : 0. 100000.
@@ -10,8 +10,8 @@ include :
 
 snapshot : 85
 
-baryon_shapes : /physics2/ssamurof/massive_black_ii/subhalo_cat-nthreshold5-proj+3d.fits
-dm_shapes : /physics2/ssamurof/massive_black_ii/subhalo_cat-nthreshold5-proj+3d.fits
+baryon_shapes : /physics2/ssamurof/massive_black_ii/subhalo_cat_reduced-nthreshold5-proj+3d.fits
+dm_shapes : /physics2/ssamurof/massive_black_ii/subhalo_cat_reduced-nthreshold5-proj+3d.fits
 output : /physics2/ssamurof/massive_black_ii/cats/reduced_subhalo_shapes-v4.fits
 
 symmetrisation:

@@ -125,15 +125,15 @@ class catalogue:
 			if (verbosity>0):
 				print '%s < %s < %s'%(lower, name, upper)
 
-			if (name=='npart_dm'):
+			if ('npart_dm' in name):
 				n = h['lenbytype'].T[0]
 				sel = (n>float(upper)) | (n<float(lower))
 				sel = sel | np.invert(np.isfinite(n))
-			elif (name=='npart_baryon'):
+			elif ('npart_baryon' in name):
 				n = h['lenbytype'].T[4]
 				sel = (n>float(upper)) | (n<float(lower))
 				sel = sel | np.invert(np.isfinite(n))
-			if (name in ['x', 'y', 'z']):
+			elif (name in ['x', 'y', 'z']):
 				lookup = {'x':0, 'y':1, 'z':2}
 				p = h['pos'].T[lookup[name]]
 				sel = (p>float(upper)) | (p<float(lower))
@@ -167,8 +167,7 @@ class catalogue:
 		centralflag = np.fromfile('/home/rmandelb.proj/ananth/centralflag_085',dtype=np.uint32)
 
 		contam_mask = np.isfinite(h['pos'].T[1]) & (h['pos'].T[0]<100000) & (h['pos'].T[1]<100000) & (h['pos'].T[2]<100000)
-
-		cflag = centralflag[contam_mask[mask]]
+		cflag = centralflag[mask[contam_mask]]
 
 		self.array['central'] = cflag
 
@@ -320,9 +319,7 @@ if config['include']['halo_matching']:
 	Rg, indg, infog = halos.groups(cat.array)
 	cat.array['rh'] = Rg
 
-	# Working out the halo occupation is slightly more fiddly
-	cat.occupation_statistics()
-	cat.tenneti_info(h, mask)
+
 
 else:
 	ref = fi.FITS('/physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v2.fits')[1].read()
@@ -330,8 +327,9 @@ else:
 	for name in ['central', 'nocc', 'rh', 'halo_id']:
 		cat.array[name] = ref[name]
 
-
-
+# Working out the halo occupation is slightly more fiddly
+cat.occupation_statistics()
+cat.tenneti_info(h, mask)
 	
 
 import pdb ; pdb.set_trace

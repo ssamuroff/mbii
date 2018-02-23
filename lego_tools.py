@@ -54,7 +54,7 @@ def symmetrise_catalogue3(data=None,mask=None,filename='/home/ssamurof/massive_b
             print 'Skipping halo %d as it contains <%d galaxies'%(g,nmin)
             continue
 
-        symmetrised_halo = symmetrise_halo3(data[select], gids=group_ids[select], verbose=False, g=g)
+        symmetrised_halo = symmetrise_halo4(data[select], gids=group_ids[select], verbose=False, g=g)
 
         if verbose:
             print g, ngal
@@ -71,7 +71,7 @@ def symmetrise_catalogue3(data=None,mask=None,filename='/home/ssamurof/massive_b
     print 'Done'
     return 0
 
-def symmetrise_halo3(data, gids=None, verbose=True, g=None):
+def symmetrise_halo4(data, gids=None, verbose=True, g=None):
     if verbose:
         print 'Will apply one random rotation per subhalo'
     np.random.seed(9000)
@@ -81,8 +81,10 @@ def symmetrise_halo3(data, gids=None, verbose=True, g=None):
     N = data['npart_baryon']
     # Let's try something slightly different here
     # get the centroid position from the database rather than trying to recalculate it
-    info = find_centre(g) 
-    x0, y0, z0 = info['x'], info['y'], info['z']
+    info = find_centre(g)
+
+    #info = find_mean_position(g, data)
+    x0, y0, z0 = info['x']/1000., info['y']/1000., info['z']/1000.
 
     cent = np.array([x0,y0,z0])
     positions = np.array([data['x']-x0, data['y']-y0, data['z']-z0])
@@ -99,6 +101,129 @@ def symmetrise_halo3(data, gids=None, verbose=True, g=None):
         rot[name][:n] = data[name]
 
     for i in xrange(n):
+
+        # We can skip the rotation for central objects
+        if (data['central'][i]==1):
+            print 'skipping object -- it is classified as a central galaxy'
+            continue
+
+        if verbose:
+            print i,
+
+        if verbose:
+            print alpha, beta, gamma
+
+        # Cartesian galaxy position
+        pos = positions.T[i]
+
+        # Generate a new pair of randomised position angles on a sphere of radius R
+        phi_shifted = (np.random.rand()-0.5)*np.pi
+        theta_shifted = (np.random.rand()-0.5)*np.pi
+
+        # Galaxy position in radial coordinates
+        R = np.sqrt(sum(pos*pos))
+        phi = np.arccos(pos[2]/R)
+        theta = np.arcsin(pos[1]/R/np.sin(phi))
+
+        # Work out the rotated galaxy position
+        xrot = R * np.sin(phi_shifted) * np.cos(theta_shifted)
+        yrot = R * np.sin(phi_shifted) * np.sin(theta_shifted)
+        zrot = R * np.cos(phi_shifted)
+
+        rotated = np.array([xrot, yrot, zrot])
+
+        # Then do the 3D shape vector
+        arot = rotate_shape_vector(data[i], phi_shifted, theta_shifted, phi, theta, axis='a%d')
+        brot = rotate_shape_vector(data[i], phi_shifted, theta_shifted, phi, theta, axis='b%d')
+        crot = rotate_shape_vector(data[i], phi_shifted, theta_shifted, phi, theta, axis='c%d')
+
+        arot_dm = rotate_shape_vector(data[i], phi_shifted, theta_shifted, phi, theta, axis='a%d_dm')
+        brot_dm = rotate_shape_vector(data[i], phi_shifted, theta_shifted, phi, theta, axis='b%d_dm')
+        crot_dm = rotate_shape_vector(data[i], phi_shifted, theta_shifted, phi, theta, axis='c%d_dm')
+        
+        rot['npart_baryon'][i] = data['npart_baryon'][i]
+
+        
+        rot['x'][i] = copy.deepcopy(rotated[0])+x0
+        rot['y'][i] = copy.deepcopy(rotated[1])+y0
+        rot['z'][i] = copy.deepcopy(rotated[2])+z0
+
+        #import pdb ; pdb.set_trace()
+
+        rot['c3'][i]=crot[0]
+        rot['c2'][i]=crot[1]
+        rot['c1'][i]=crot[2]
+        rot['b3'][i]=brot[0]
+        rot['b2'][i]=brot[1]
+        rot['b1'][i]=brot[2]
+        rot['a3'][i]=arot[0]
+        rot['a2'][i]=arot[1]
+        rot['a1'][i]=arot[2]
+
+        rot['c3_dm'][i]=crot_dm[0]
+        rot['c2_dm'][i]=crot_dm[1]
+        rot['c1_dm'][i]=crot_dm[2]
+        rot['b3_dm'][i]=brot_dm[0]
+        rot['b2_dm'][i]=brot_dm[1]
+        rot['b1_dm'][i]=brot_dm[2]
+        rot['a3_dm'][i]=arot_dm[0]
+        rot['a2_dm'][i]=arot_dm[1]
+        rot['a1_dm'][i]=arot_dm[2]
+
+        # Also rotate the ellipticities
+        phim = np.arctan2(rot['a2'][i], rot['a1'][i])
+        em = np.sqrt(rot['e1'][i]*rot['e1'][i]+rot['e2'][i]*rot['e2'][i])
+        rot['e1'][i] = em * np.cos(2*phim)
+        rot['e2'][i] = em * np.sin(2*phim)
+
+        phid = np.arctan2(rot['a2_dm'][i], rot['a1_dm'][i])
+        ed = np.sqrt(rot['e1_dm'][i]*rot['e1_dm'][i]+rot['e2_dm'][i]*rot['e2_dm'][i])
+        rot['e1_dm'][i] = ed * np.cos(2*phid)
+        rot['e2_dm'][i] = ed * np.sin(2*phid)
+
+
+    return rot
+
+
+
+
+
+def symmetrise_halo3(data, gids=None, verbose=True, g=None):
+    if verbose:
+        print 'Will apply one random rotation per subhalo'
+    np.random.seed(9000)
+
+    # Work out the centroid about which to rotate
+    import weightedstats as ws
+    N = data['npart_baryon']
+    # Let's try something slightly different here
+    # get the centroid position from the database rather than trying to recalculate it
+    info = find_centre(g)
+
+    #info = find_mean_position(g, data)
+    x0, y0, z0 = info['x']/1000., info['y']/1000., info['z']/1000.
+
+    cent = np.array([x0,y0,z0])
+    positions = np.array([data['x']-x0, data['y']-y0, data['z']-z0])
+    c = np.array([data['c3'], data['c2'], data['c1']])
+    c_dm = np.array([data['c3_dm'], data['c2_dm'], data['c1_dm']])
+    a = np.array([data['a3'], data['a2'], data['a1']])
+    a_dm = np.array([data['a3_dm'], data['a2_dm'], data['a1_dm']])
+    b = np.array([data['b3'], data['b2'], data['b1']])
+    b_dm = np.array([data['b3_dm'], data['b2_dm'], data['b1_dm']])
+
+    rot = np.zeros(data.size, dtype=data.dtype)
+    n = data.size
+    for name in data.dtype.names:
+        rot[name][:n] = data[name]
+
+    for i in xrange(n):
+
+        # We can skip the rotation for central objects
+        if (data['central'][i]==1):
+            print 'skipping object -- it is classified as a central galaxy'
+            continue
+
         if verbose:
             print i,
         # Define a random rotation about each axis
@@ -160,6 +285,8 @@ def symmetrise_halo3(data, gids=None, verbose=True, g=None):
         rot['y'][i] = copy.deepcopy(rotated[1])+y0
         rot['z'][i] = copy.deepcopy(rotated[2])+z0
 
+        #import pdb ; pdb.set_trace()
+
         rot['c3'][i]=crot[0]
         rot['c2'][i]=crot[1]
         rot['c1'][i]=crot[2]
@@ -170,17 +297,27 @@ def symmetrise_halo3(data, gids=None, verbose=True, g=None):
         rot['a2'][i]=arot[1]
         rot['a1'][i]=arot[2]
 
-        rot['c3_dm'][i]=crot[0]
-        rot['c2_dm'][i]=crot[1]
-        rot['c1_dm'][i]=crot[2]
-        rot['b3_dm'][i]=brot[0]
-        rot['b2_dm'][i]=brot[1]
-        rot['b1_dm'][i]=brot[2]
-        rot['a3_dm'][i]=arot[0]
-        rot['a2_dm'][i]=arot[1]
-        rot['a1_dm'][i]=arot[2]
+        rot['c3_dm'][i]=crot_dm[0]
+        rot['c2_dm'][i]=crot_dm[1]
+        rot['c1_dm'][i]=crot_dm[2]
+        rot['b3_dm'][i]=brot_dm[0]
+        rot['b2_dm'][i]=brot_dm[1]
+        rot['b1_dm'][i]=brot_dm[2]
+        rot['a3_dm'][i]=arot_dm[0]
+        rot['a2_dm'][i]=arot_dm[1]
+        rot['a1_dm'][i]=arot_dm[2]
 
-    #import pdb ; pdb.set_trace()
+        # Also rotate the ellipticities
+        phim = np.arctan2(rot['a2'][i], rot['a1'][i])
+        em = np.sqrt(rot['e1'][i]*rot['e1'][i]+rot['e2'][i]*rot['e2'][i])
+        rot['e1'][i] = em * np.cos(2*phim)
+        rot['e2'][i] = em * np.sin(2*phim)
+
+        phid = np.arctan2(rot['a2_dm'][i], rot['a1_dm'][i])
+        ed = np.sqrt(rot['e1_dm'][i]*rot['e1_dm'][i]+rot['e2_dm'][i]*rot['e2_dm'][i])
+        rot['e1_dm'][i] = ed * np.cos(2*phid)
+        rot['e2_dm'][i] = ed * np.sin(2*phid)
+
 
     return rot
 
@@ -428,6 +565,14 @@ def find_centre(g):
     results = fromarrays(np.array(c.fetchall()).squeeze().T,names='x,y,z')
     return results
 
+def find_mean_position(g, data):
+    info = np.zeros(1, dtype=[('x',float), ('y',float), ('z',float)])
+
+    for name in ['x','y','z']:
+        info[name] = np.mean(data[name][data['halo_id']==g])
+
+    return info
+    
 
 def symmetrise_halo2(data, gids=None, verbose=True, g=None):
     if verbose:
@@ -829,13 +974,30 @@ def gather_mpi_output(filestring, hdu=-1, name='subhalo_id', save=False):
         out.close()
     return dat
 
-def export_treecorr_output(filename,corr):
+def export_treecorr_output(filename,corr,errors):
     R = np.exp(corr.logr)
+
     xi = corr.xi
 
-    out = np.vstack((R,xi,corr.weight))
+    out = np.vstack((R,xi,corr.weight, errors))
     print 'Saving %s'%filename
     np.savetxt(filename, out.T)
+
+def rotate_shape_vector(data, theta_shifted, phi_shifted, theta, phi, axis='a%d'):
+    # Axis vector in Cartesian, then radial coordinates
+    # assume it's normalised correctly in 3D
+    avec = np.array([data[axis%1], data[axis%2], data[axis%3]])
+    beta = np.arccos(avec[2])
+    alpha = np.arcsin(avec[1]/np.sin(beta))
+
+    # Work out the correct new shape vector, preserving the relative orientation to the centre of mass
+    alpha_shifted = theta_shifted - theta + alpha
+    beta_shifted = phi_shifted - phi + beta
+
+    rot = [np.sin(beta_shifted)*np.cos(alpha_shifted), np.sin(beta_shifted)*np.sin(alpha_shifted), np.cos(beta_shifted)]
+
+    return rot
+
 
 
 def project_to_sky(data):
