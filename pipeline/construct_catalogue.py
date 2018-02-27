@@ -221,6 +221,7 @@ class catalogue:
 
 		# First do the KD tree calculation on the global level (ie not split by group)
 		# This should hopefully be slightly faster than repeating the calculation for every halo
+		# though maybe not...
 		select = (nbar>0) & (h['pos'].T[0]/1000>0) & (h['pos'].T[0]/1000<100) & (h['pos'].T[1]/1000>0) & (h['pos'].T[1]/1000<100) & (h['pos'].T[2]/1000>0) & (h['pos'].T[2]/1000<100)
 
 		xyz0 = np.array([h['pos'].T[0][select]/1000, h['pos'].T[1][select]/1000, h['pos'].T[2][select]/1000])
@@ -245,9 +246,11 @@ class catalogue:
 		    # (b) subhalos with which no star particles are associated
 		    # (c) subhalos with non-finite positions, or positions outside the simulation box
 
+		    select = (h['groupid']==g['groupId']) & (nbar>0) & (h['pos'].T[0]/1000>0) & (h['pos'].T[0]/1000<100) & (h['pos'].T[1]/1000>0) & (h['pos'].T[1]/1000<100) & (h['pos'].T[2]/1000>0) & (h['pos'].T[2]/1000<100)
+
 		    # Also flag the most massive subhalo in the group (by matter, not baryonic mass)
 		    # Unfortunately this does require iteration over individual halos
-		    msubflags = np.zeros(xyz0[0].size)
+		    msubflags = np.zeros(h['groupid'][select].size)
 		    msubflags[(h['lenbytype'].T[0][select]==h['lenbytype'].T[0][select].max())]+=1
 		    massflag[select]=msubflags
 
