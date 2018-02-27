@@ -217,36 +217,41 @@ class catalogue:
 		massflag = np.zeros(subhalo_data_dm['x'].size)
 		i0=0
 
+		import pdb ; pdb.set_trace()
+
+		# First do the KD tree calculation on the global level (ie not split by group)
+		# This should hopefully be slightly faster than repeating the calculation for every halo
+		select = (nbar>0) & (h['pos'].T[0]/1000>0) & (h['pos'].T[0]/1000<100) & (h['pos'].T[1]/1000>0) & (h['pos'].T[1]/1000<100) & (h['pos'].T[2]/1000>0) & (h['pos'].T[2]/1000<100)
+
+		xyz0 = np.array([h['pos'].T[0][select]/1000, h['pos'].T[1][select]/1000, h['pos'].T[2][select]/1000])
+
+		print 'Building KD tree from %d objects'%h['groupid'][select].size
+		tree = sps.KDTree(xyz0.T)
+
+		print 'Querying tree for group %d/%d'%(i+1, ngrp)
+		# Query it for the 3D halo centroid (one 3 vector)
+		xyz = np.array([group_data['x'], group_data['y'], group_data['z']])
+		R,ind = tree.query(xyz.T, k=1)
+
+		# Store the results in the same shape as the subhalo table
+		cflag[ind]+=1
+
 		for i, g in enumerate(group_data):
 		    # Match up each galaxy (subhalo) to the nearest group centroid
-		    print 'Building KD tree'
 
 		    # Build the tree using galaxies in the group
 		    # The cuts here reject
 		    # (a) subhalos not associated with group i
 		    # (b) subhalos with which no star particles are associated
 		    # (c) subhalos with non-finite positions, or positions outside the simulation box
-		    select = (h['groupid']==g['groupId']) & (nbar>0) & (h['pos'].T[0]/1000>0) & (h['pos'].T[0]/1000<100) & (h['pos'].T[1]/1000>0) & (h['pos'].T[1]/1000<100) & (h['pos'].T[2]/1000>0) & (h['pos'].T[2]/1000<100)
-
-		    xyz0 = np.array([h['pos'].T[0][select]/1000, h['pos'].T[1][select]/1000, h['pos'].T[2][select]/1000])
-		    tree = sps.KDTree(xyz0.T)
-
-		    print 'Querying tree for group %d'%i
-
-		    # Query it for the 3D halo centroid (one 3 vector)
-		    xyz = np.array([g['x'], g['y'], g['z']])
-		    R,ind = tree.query(xyz.T, k=1)
-
-		    subflags = np.zeros(xyz0[0].size)
-		    subflags[ind]+=1
-		    cflag[select] = subflags
 
 		    # Also flag the most massive subhalo in the group (by matter, not baryonic mass)
+		    # Unfortunately this does require iteration over individual halos
 		    msubflags = np.zeros(xyz0[0].size)
 		    msubflags[(h['lenbytype'].T[0][select]==h['lenbytype'].T[0][select].max())]+=1
 		    massflag[select]=msubflags
 
-		return cflag. massflag
+		return cflag, massflag
 
 		
 	def export(self, outpath):
