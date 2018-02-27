@@ -946,6 +946,21 @@ def classify_subhalos(data, snapshot=85):
     outfits.write(out)
     outfits.close()
 
+def kdtree_centrals(root_folder='/physics/yfeng1/mb2', snapshot='085'):
+    snap = SnapDir(snapshot, root_folder)
+    h = snap.readsubhalo()
+
+    # Read in the subhalo data and masks, as before
+    baryons1=fi.FITS('/home/ssamurof/massive_black_ii/subhalo_cat-nthreshold5.fits')['baryons'][:]
+    dm1=fi.FITS('/home/ssamurof/massive_black_ii/subhalo_cat-nthreshold5.fits')['dm'][:]
+    select = (dm1['npart']>1000) & (baryons1['npart']>1000) & (np.isfinite(baryons1['x']) & np.isfinite(baryons1['y']) & np.isfinite(baryons1['z'])) & (baryons1['x']<100000) & (baryons1['y']<100000) & (baryons1['z']<100000) 
+
+    colours=['purple', 'pink', 'plum', 'hotpink', 'forestgreen', 'orange', 'k', 'gray']*100
+    group_ids = np.array(h['groupid'])[select]
+    groups = np.unique(group_ids)
+
+    
+
 
 def identify_centrals(data, mask=None, filename='subhalo_central_flags-v2.fits', rank=0, size=1):
     

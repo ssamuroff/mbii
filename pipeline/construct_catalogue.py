@@ -29,6 +29,8 @@ dt = [
       ('sigma', float), # Velocity dispersion  
       ('central', int), # Flag to indicate central galaxies
       ('rh', float), # Radial distance from the centre of the halo
+      ('most_massive', int), # Binary flag, 1 if subhalo is has the highest DM mass in its group 
+      ('spatial_central', float), # Bianry flag, 1 if subhalo is the closest to the potential minimum of the host halo 
       ('halo_id', int), # ID of the halo in which each galaxy resides
       ('nocc', int)] # Number of galaxies in that halo (so for any galaxy there are nocc-1 others sharing the same halo)
 
@@ -173,35 +175,78 @@ class catalogue:
 
 		return
 
-	def find_cs_flag(self, group_data):
+	def calculate_galaxy_offsets(self):
+
+		# Array of halos for which centroid positions are needed
+		halo_ids = np.unique(self.array['halo_id'])
+
+		R = np.zeros(self.array.size, dtype=[('x',float), ('y',float), ('z',float)]) - 9999.
+
+		for ih in halo_ids:
+			# Query the database to find the 3D position of the potential minimum
+			info = utils.find_centre(ih)
+			# Convert to h^-1 Mpc
+			x0 = info['x']/1000
+			y0 = info['y']/1000
+			z0 = info['z']/1000
+
+			# Select galaxies in this halo
+			select = (self.array['halo_id']==ih)
+
+			# Work out the offset in position
+			R['x'][select] = x0 - self.array['x'][select]
+			R['y'][select] = y0 - self.array['y'][select]
+			R['z'][select] = z0 - self.array['z'][select]
+
+		return R
+
+	def find_cs_flag(self, group_data, h, subhalo_data_dm, subhalo_data_bar):
 		# This is very similar to the neighbour search carried out earlier
-		# But now we match up the nearest subhalo to each group centroid
-		# And call it the central galaxy
+		# This should produce two flag tables, with the criterion for being a central galaxy
+		# either:  
+		# (a) being the nearest object with star particles to the potential minimum
+		# (b) being the most massive subhalo in the group 
+		# The masks are shaped like the full subhalo data, with mass cuts etc to be applied later
 
-		if self.verbosity>0:
-		    	print 'Constructing central flag table'
+		print 'Constructing central flag table'
 
-		groups = np.unique(self.array['halo_id'])
+		groups = np.unique(group_data['groupId'])
 		ngrp = len(groups)
+		nbar = subhalo_data_bar['npart']
+		cflag = np.zeros(subhalo_data_dm['x'].size)
+		massflag = np.zeros(subhalo_data_dm['x'].size)
+		i0=0
 
 		for i, g in enumerate(group_data):
 		    # Match up each galaxy (subhalo) to the nearest group centroid
-		    if self.verbosity>0:
-		    	print 'Building KD tree'
+		    print 'Building KD tree'
 
 		    # Build the tree using galaxies in the group
-		    select = (self.array['halo_id']==g['groupId'])
-		    xyz0 = np.array([self.array['x'][select], self.array['y'][select], self.array['z'][select]])
+		    # The cuts here reject
+		    # (a) subhalos not associated with group i
+		    # (b) subhalos with which no star particles are associated
+		    # (c) subhalos with non-finite positions, or positions outside the simulation box
+		    select = (h['groupid']==g['groupId']) & (nbar>0) & (h['pos'].T[0]/1000>0) & (h['pos'].T[0]/1000<100) & (h['pos'].T[1]/1000>0) & (h['pos'].T[1]/1000<100) & (h['pos'].T[2]/1000>0) & (h['pos'].T[2]/1000<100)
+
+		    xyz0 = np.array([h['pos'].T[0][select]/1000, h['pos'].T[1][select]/1000, h['pos'].T[2][select]/1000])
 		    tree = sps.KDTree(xyz0.T)
 
-		    if self.verbosity>0:
-		    	print 'Querying tree'
+		    print 'Querying tree for group %d'%i
 
 		    # Query it for the 3D halo centroid (one 3 vector)
 		    xyz = np.array([g['x'], g['y'], g['z']])
 		    R,ind = tree.query(xyz.T, k=1)
 
-		    import pdb ; pdb.set_trace()
+		    subflags = np.zeros(xyz0[0].size)
+		    subflags[ind]+=1
+		    cflag[select] = subflags
+
+		    # Also flag the most massive subhalo in the group (by matter, not baryonic mass)
+		    msubflags = np.zeros(xyz0[0].size)
+		    msubflags[(h['lenbytype'].T[0][select]==h['lenbytype'].T[0][select].max())]+=1
+		    massflag[select]=msubflags
+
+		return cflag. massflag
 
 		
 	def export(self, outpath):
@@ -245,14 +290,21 @@ if args.verbosity>0:
 	print 'Reading dark matter information from ', config['dm_shapes']
 dm = fi.FITS(config['dm_shapes'])['dm'].read()
 
-
 # Now create an array in which to store the required columns
 cat = catalogue()
+
+# Do the central/satellite flagging
+halos = halo_wrapper(config['snapshot'], verbosity=args.verbosity)
+spatial_cflag, mass_cflag = cat.find_cs_flag(halos.group_info, h, dm, baryons)
+
 # Impose the selection cuts, as specified in the configuration file
 mask = cat.build_selection_mask(config['cuts'], baryons, dm, h, verbosity=args.verbosity)
 mask = mask & np.isfinite(h['pos'].T[0]) & np.isfinite(h['pos'].T[1]) & np.isfinite(h['pos'].T[2])
 
 cat.array = np.zeros(baryons[mask].size, dtype=dt)
+
+cat.array['most_massive'] = mass_cflag[mask]
+cat.array['spatial_central'] = spatial_cflag[mask]
 
 # The ids, masses and particle numbers are fairly straightforwards to obtain 
 i = np.arange(0, baryons.size, 1)
@@ -312,6 +364,7 @@ cat.array['e2_dm'] = e * np.sin(2*phi)
 # We'll need to read out this information from the database
 if config['include']['halo_matching']:
 	halos = halo_wrapper(config['snapshot'], verbosity=args.verbosity)
+	cat.find_cs_flag(halos.group_info)
 	R, ind, info = halos.populate(cat.array)
 
 	cat.array['halo_id'] = info['groupId']
@@ -331,6 +384,7 @@ else:
 cat.occupation_statistics()
 cat.tenneti_info(h, mask)
 	
+#cat.calculate_galaxy_offsets()
 
 import pdb ; pdb.set_trace
 # Now save the compiled subhalo data as a FITS file
