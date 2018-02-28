@@ -5,6 +5,106 @@ Tools for accessing the MassiveBlack-II simulations and derived data products ho
 ### Dependencies
 
 * MySQLdb
+* fitsio
+* treecorr (Francois Lanusse's version https://github.com/EiffL/TreeCorr is required for ED correlations)
+* halotools 
+
+Cosmology:
+
+n_s=0.968
+
+sigma_8=0.816
+
+Omega_Lambda = 0.725
+
+Omega_m= 0.275
+
+Omega_baryon = 0.046
+
+h=0.701
+
+### Overview
+
+This is my attempt to create an end-to-end pipeline from simulation products (particles and group information) to galaxy catalogues and summary statistics.
+This is still a work in progress. We're currently still quite dependent on various scattered bits of code and data built (but not documented in any meaningful way that we know of) by Ananth Tenneti.
+
+
+### Usage
+
+The data processing is handled by a series of calls to the scripts in mbii/pipeline.
+Adjustable features are set by yaml files (coma-specific examples can be found in mbii/config).
+
+Assuming the paths in the config files are set correctly, mbii is in the PYTHONPATH and there are no dependencies missing one should be able to do.
+
+#### 1. Build subhalo catalogues from particle data
+
+Missing. To do.
+
+#### 2. Postprocess the catalogues 
+
+This step involves various matching, calculation of derived quantities and application of user-specified cuts.
+
+`python -m mbii.pipeline.construct_catalogue --config config/fiducial_cat.yaml`
+
+#### 3. Symmetrise the catalogues
+
+This is is only useful for specific applications. Spin satellite galaxies about the halo centres, maintaining the relative orientation to those centres. Should leave the central objects unchanged.
+
+Output/input files specified in the `symmetrisation` section of the config file.
+
+`python -m mbii.pipeline.symmetrise --config config/fiducial_cat.yaml`
+
+#### 4. Calculate two point statistics
+
+Reads in a galaxy catalogue in the format produced by step 2. Outputs the result as text files.
+
+`python -m mbii.pipeline.calculate_2pt --config config/fiducial_cat.yaml`
+
+### Other config options
+
+cuts : column names, lower then upper bounds
+
+snapshot : which redshift snaptshot to use. 85 is the lowest z~0.
+
+output : place to write the new postprocessed catalogue
+
+errors :
+    nsub : number of jackknife volumes to use to calculate errorbars.
+    
+2pt:
+    ctypes : whitespace separated list of two point correlations to calculate. 
+             See Mandelbaum et al 2010 (https://arxiv.org/pdf/0911.5347.pdf)
+             and Joachimi et al 2010 (https://arxiv.org/pdf/1008.3491.pdf)
+             Allowed:
+             -- ed : orientation - separation vector 3D correlation
+             -- ee : orientation - orientation 3D correlation
+             -- gg : position - position 3D correlation
+             -- iiplus_3d : eq 10a of MB10
+             -- iiminus_3d : eq 10b of MB10
+             -- giplus_3d : eq 8 of MB10
+             -- giminus_3d :
+             -- iiplus_proj : 
+             -- iiminus_proj : 
+             -- giplus_proj : eq 12 of J10
+             -- giminus_proj :  
+    errors : Whetehr or not to calculate jackknife errorbars, bool
+    shapes : location of the input shape/position catalogue
+    savedir : place to save the output text files
+    split : quantity by which to split the catalogue before calculation (for example, for central/satellite separation).
+    split_val : value of the above quantity about which to split the catalogue
+    rmin : minimum 3D separation
+    rmax : maximum 3D separation
+    nbin : number of logspaced bins to use
+    rpmin : minimum perpendicular separation
+    rpmax : maximum perpendicular separation
+    nrpbin : number of logspaced rp to use
+    pi_max : upper limit of line of sight integration for projected statistics
+    
+    
+
+
+
+## Historical Stuff
 
 ### The complete galaxy properties of MassiveBlack II simulation
 
