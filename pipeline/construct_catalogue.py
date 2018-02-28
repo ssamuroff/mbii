@@ -12,8 +12,9 @@ from numpy.core.records import fromarrays
 
 dt = [
       ('object_id', int), # unique ID for each galaxy 
-      ('baryon_mass', float), # What it sounds like, in units of 10^10 h^-1 M_*
+      ('gas_mass', float), # What it sounds like, in units of 10^10 h^-1 M_*
       ('matter_mass', float),  # What it sounds like, in units of 10^10 h^-1 M_*
+      ('stellar_mass', float),  # What it sounds like, in units of 10^10 h^-1 M_*
       ('npart_dm', int), # Number of DM particles in the subhalo
       ('npart_baryon', int), # Number of star particles in the subhalo
       ('e1', float), ('e2', float), # Projected ellipticities
@@ -217,8 +218,6 @@ class catalogue:
 		massflag = np.zeros(subhalo_data_dm['x'].size)
 		i0=0
 
-		import pdb ; pdb.set_trace()
-
 		# First do the KD tree calculation on the global level (ie not split by group)
 		# This should hopefully be slightly faster than repeating the calculation for every halo
 		# though maybe not...
@@ -229,7 +228,7 @@ class catalogue:
 		print 'Building KD tree from %d objects'%h['groupid'][select].size
 		tree = sps.KDTree(xyz0.T)
 
-		print 'Querying tree for group %d/%d'%(i+1, ngrp)
+		print 'Querying tree for all groups (%d)'%ngrp
 		# Query it for the 3D halo centroid (one 3 vector)
 		xyz = np.array([group_data['x'], group_data['y'], group_data['z']])
 		R,ind = tree.query(xyz.T, k=1)
@@ -237,22 +236,33 @@ class catalogue:
 		# Store the results in the same shape as the subhalo table
 		cflag[ind]+=1
 
-		for i, g in enumerate(group_data):
-		    # Match up each galaxy (subhalo) to the nearest group centroid
+		print 'Building mass flags.'
+		Mm = np.array(h['lenbytype'].T[1]) # DM masses
+		Mg = np.array(h['lenbytype'].T[0]) # gas masses
+		gids = np.array(h['groupid'])
 
-		    # Build the tree using galaxies in the group
-		    # The cuts here reject
-		    # (a) subhalos not associated with group i
-		    # (b) subhalos with which no star particles are associated
-		    # (c) subhalos with non-finite positions, or positions outside the simulation box
+		# Attempting to do this without a for loop here
+		# We'll need to assume the subhalos are sorted by mass within each group
+		# which I _think_ is true for the historic data products
+		ids,indices=np.unique(gids, return_index=True)
+		massflag[indices]=1
 
-		    select = (h['groupid']==g['groupId']) & (nbar>0) & (h['pos'].T[0]/1000>0) & (h['pos'].T[0]/1000<100) & (h['pos'].T[1]/1000>0) & (h['pos'].T[1]/1000<100) & (h['pos'].T[2]/1000>0) & (h['pos'].T[2]/1000<100)
-
-		    # Also flag the most massive subhalo in the group (by matter, not baryonic mass)
-		    # Unfortunately this does require iteration over individual halos
-		    msubflags = np.zeros(h['groupid'][select].size)
-		    msubflags[(h['lenbytype'].T[0][select]==h['lenbytype'].T[0][select].max())]+=1
-		    massflag[select]=msubflags
+#		for i, g in enumerate(group_data):
+#		    # Match up each galaxy (subhalo) to the nearest group centroid
+#
+#		    # Build the tree using galaxies in the group
+#		    # The cuts here reject
+#		    # (a) subhalos not associated with group i
+#		    # (b) subhalos with which no star particles are associated
+#		    # (c) subhalos with non-finite positions, or positions outside the simulation box
+#
+		    #select = (h['groupid']==g['groupId']) & (nbar>0) & (h['pos'].T[0]/1000>0) & (h['pos'].T[0]/1000<100) & (h['pos'].T[1]/1000>0) & (h['pos'].T[1]/1000<100) & (h['pos'].T[2]/1000>0) & (h['pos'].T[2]/1000<100)
+#
+#		    # Also flag the most massive subhalo in the group (by matter, not baryonic mass)
+#		    # Unfortunately this does require iteration over individual halos
+#		    msubflags = np.zeros(h['groupid'][select].size)
+#		    msubflags[(h['lenbytype'].T[0][select]==h['lenbytype'].T[0][select].max())]+=1
+#		    massflag[select]=msubflags
 
 		return cflag, massflag
 
@@ -317,8 +327,9 @@ cat.array['spatial_central'] = spatial_cflag[mask]
 # The ids, masses and particle numbers are fairly straightforwards to obtain 
 i = np.arange(0, baryons.size, 1)
 cat.array['object_id'] = i[mask]
-cat.array['baryon_mass'] = h['massbytype'].T[4][mask]
+cat.array['stellar_mass'] = h['massbytype'].T[4][mask]
 cat.array['matter_mass'] = h['massbytype'].T[1][mask]
+cat.array['gas_mass'] = h['massbytype'].T[0][mask]
 cat.array['npart_dm'] = h['lenbytype'].T[1][mask]
 cat.array['npart_baryon'] = h['lenbytype'].T[4][mask]
 
@@ -394,7 +405,6 @@ cat.tenneti_info(h, mask)
 	
 #cat.calculate_galaxy_offsets()
 
-import pdb ; pdb.set_trace
 # Now save the compiled subhalo data as a FITS file
 cat.export(config['output'])
 
