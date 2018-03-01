@@ -78,27 +78,27 @@ output : place to write the new postprocessed catalogue
 
 errors :
    
-   nsub : number of jackknife volumes to use to calculate errorbars.
+     nsub : number of jackknife volumes to use to calculate errorbars.
     
 2pt:
 
-   ctypes : whitespace separated list of two point correlations to calculate. 
+     ctypes : whitespace separated list of two point correlations to calculate. 
              See Mandelbaum et al 2010 (https://arxiv.org/pdf/0911.5347.pdf)
              and Joachimi et al 2010 (https://arxiv.org/pdf/1008.3491.pdf)
              
              Allowed:
              
-             -- ed : orientation - separation vector 3D correlation
-             -- ee : orientation - orientation 3D correlation
-             -- gg : position - position 3D correlation
-             -- iiplus_3d : eq 10a of MB10
-             -- iiminus_3d : eq 10b of MB10
-             -- giplus_3d : eq 8 of MB10
-             -- giminus_3d :
-             -- iiplus_proj : 
-             -- iiminus_proj : 
-             -- giplus_proj : eq 12 of J10
-             -- giminus_proj : 
+             ed : orientation - separation vector 3D correlation
+             ee : orientation - orientation 3D correlation
+             gg : position - position 3D correlation
+             iiplus_3d : eq 10a of MB10
+             iiminus_3d : eq 10b of MB10
+             giplus_3d : eq 8 of MB10
+             giminus_3d :
+             iiplus_proj : 
+             iiminus_proj : 
+             giplus_proj : eq 12 of J10
+             giminus_proj : 
 
    errors : Whether or not to calculate jackknife errorbars, bool
    shapes : location of the input shape/position catalogue
