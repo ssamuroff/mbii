@@ -46,7 +46,7 @@ Assuming the paths in the config files are set correctly, mbii is in the PYTHONP
 
 #### 1. Build subhalo catalogues from particle data
 
-Missing. To do.
+Missing. To do. (Well, the code exists in this repository but it needs putting into an understandable format).
 
 #### 2. Postprocess the catalogues 
 
