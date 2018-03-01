@@ -26,7 +26,7 @@ h=0.701
 ### Overview
 
 This is my attempt to create an end-to-end pipeline from simulation products (particles and group information) to galaxy catalogues and summary statistics.
-This is still a work in progress. We're currently still quite dependent on various scattered bits of code and data built (but not documented in any meaningful way that we know of) by Ananth Tenneti.
+This is still a work in progress. We're currently still quite dependent on various scattered bits of code and data products built (but not documented in any meaningful way that we know of) by Ananth Tenneti.
 
 
 ### Usage
