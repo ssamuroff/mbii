@@ -4,10 +4,12 @@ Tools for accessing the MassiveBlack-II simulations and derived data products ho
 
 ### Dependencies
 
-* MySQLdb
+* pymysql
 * fitsio
 * treecorr (https://github.com/EiffL/TreeCorr is required for ED correlations)
 * halotools (https://github.com/duncandc/halotools/tree/alignments_devel)
+* yaml
+* astropy
 
 Cosmology:
 
