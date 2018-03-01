@@ -11,17 +11,23 @@ Tools for accessing the MassiveBlack-II simulations and derived data products ho
 
 Cosmology:
 
-n_s=0.968
+n_s = 0.968
 
-sigma_8=0.816
+sigma_8 = 0.816
 
-Omega_Lambda = 0.725
+Omega_de = 0.725
 
-Omega_m= 0.275
+Omega_m = 0.275
 
-Omega_baryon = 0.046
+Omega_b = 0.046
 
-h=0.701
+Omega_k = 0.0
+
+h = 0.701
+
+w0 = 0.0
+
+wa = 0.0
 
 ### Overview
 
