@@ -77,9 +77,11 @@ snapshot : which redshift snaptshot to use. 85 is the lowest z~0.
 output : place to write the new postprocessed catalogue
 
 errors :
-    nsub : number of jackknife volumes to use to calculate errorbars.
+   
+   nsub : number of jackknife volumes to use to calculate errorbars.
     
 2pt:
+
    ctypes : whitespace separated list of two point correlations to calculate. 
              See Mandelbaum et al 2010 (https://arxiv.org/pdf/0911.5347.pdf)
              and Joachimi et al 2010 (https://arxiv.org/pdf/1008.3491.pdf)
