@@ -81,6 +81,7 @@ errors :
     ctypes : whitespace separated list of two point correlations to calculate. 
              See Mandelbaum et al 2010 (https://arxiv.org/pdf/0911.5347.pdf)
              and Joachimi et al 2010 (https://arxiv.org/pdf/1008.3491.pdf)
+             
              Allowed:
              
              -- ed : orientation - separation vector 3D correlation
@@ -93,7 +94,8 @@ errors :
              -- iiplus_proj : 
              -- iiminus_proj : 
              -- giplus_proj : eq 12 of J10
-             -- giminus_proj :  
+             -- giminus_proj : 
+
     errors : Whether or not to calculate jackknife errorbars, bool
     shapes : location of the input shape/position catalogue
     savedir : place to save the output text files
