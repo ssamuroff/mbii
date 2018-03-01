@@ -6,8 +6,8 @@ Tools for accessing the MassiveBlack-II simulations and derived data products ho
 
 * MySQLdb
 * fitsio
-* treecorr (Francois Lanusse's version https://github.com/EiffL/TreeCorr is required for ED correlations)
-* halotools 
+* treecorr (https://github.com/EiffL/TreeCorr is required for ED correlations)
+* halotools (https://github.com/duncandc/halotools/tree/alignments_devel)
 
 Cosmology:
 
