@@ -82,6 +82,7 @@ errors :
              See Mandelbaum et al 2010 (https://arxiv.org/pdf/0911.5347.pdf)
              and Joachimi et al 2010 (https://arxiv.org/pdf/1008.3491.pdf)
              Allowed:
+             
              -- ed : orientation - separation vector 3D correlation
              -- ee : orientation - orientation 3D correlation
              -- gg : position - position 3D correlation
@@ -93,7 +94,7 @@ errors :
              -- iiminus_proj : 
              -- giplus_proj : eq 12 of J10
              -- giminus_proj :  
-    errors : Whetehr or not to calculate jackknife errorbars, bool
+    errors : Whether or not to calculate jackknife errorbars, bool
     shapes : location of the input shape/position catalogue
     savedir : place to save the output text files
     split : quantity by which to split the catalogue before calculation (for example, for central/satellite separation).
@@ -128,21 +129,6 @@ for example, the star properties at 085 are ~10 GB in size.
 
 readsubhalo.py implements SnapDir objects which can be used to access
 the data in python. 
-
-Cosmology:
-
-n_s=0.968
-
-sigma_8=0.816
-
-Omega_Lambda = 0.725
-
-Omega_m= 0.275
-
-Omega_baryon = 0.046
-
-h=0.701
-
 
 ==================
 
