@@ -11,7 +11,7 @@ Tools for accessing the MassiveBlack-II simulations and derived data products ho
 * yaml
 * astropy
 
-Cosmology:
+### Cosmology:
 
 n_s = 0.968
 
