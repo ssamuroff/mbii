@@ -78,7 +78,7 @@ errors :
     nsub : number of jackknife volumes to use to calculate errorbars.
     
 2pt:
-    ctypes : whitespace separated list of two point correlations to calculate. 
+   ctypes : whitespace separated list of two point correlations to calculate. 
              See Mandelbaum et al 2010 (https://arxiv.org/pdf/0911.5347.pdf)
              and Joachimi et al 2010 (https://arxiv.org/pdf/1008.3491.pdf)
              
@@ -96,18 +96,18 @@ errors :
              -- giplus_proj : eq 12 of J10
              -- giminus_proj : 
 
-    errors : Whether or not to calculate jackknife errorbars, bool
-    shapes : location of the input shape/position catalogue
-    savedir : place to save the output text files
-    split : quantity by which to split the catalogue before calculation (for example, for central/satellite separation).
-    split_val : value of the above quantity about which to split the catalogue
-    rmin : minimum 3D separation
-    rmax : maximum 3D separation
-    nbin : number of logspaced bins to use
-    rpmin : minimum perpendicular separation
-    rpmax : maximum perpendicular separation
-    nrpbin : number of logspaced rp to use
-    pi_max : upper limit of line of sight integration for projected statistics
+   errors : Whether or not to calculate jackknife errorbars, bool
+   shapes : location of the input shape/position catalogue
+   savedir : place to save the output text files
+   split : quantity by which to split the catalogue before calculation (for example, for central/satellite separation).
+   split_val : value of the above quantity about which to split the catalogue
+   rmin : minimum 3D separation
+   rmax : maximum 3D separation
+   nbin : number of logspaced bins to use
+   rpmin : minimum perpendicular separation
+   rpmax : maximum perpendicular separation
+   nrpbin : number of logspaced rp to use
+   pi_max : upper limit of line of sight integration for projected statistics
     
     
 
