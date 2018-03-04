@@ -100,29 +100,29 @@ errors :
              giplus_proj : eq 12 of J10
              giminus_proj : 
 
-   errors : Whether or not to calculate jackknife errorbars, bool
+    errors : Whether or not to calculate jackknife errorbars, bool
    
-   shapes : location of the input shape/position catalogue
+    shapes : location of the input shape/position catalogue
    
-   savedir : place to save the output text files
+    savedir : place to save the output text files
    
-   split : quantity by which to split the catalogue before calculation (for example, for central/satellite separation).
+    split : quantity by which to split the catalogue before calculation (for example, for central/satellite separation).
    
-   split_val : value of the above quantity about which to split the catalogue
+    split_val : value of the above quantity about which to split the catalogue
    
-   rmin : minimum 3D separation
+    rmin : minimum 3D separation
    
-   rmax : maximum 3D separation
+    rmax : maximum 3D separation
    
-   nbin : number of logspaced bins to use
+    nbin : number of logspaced bins to use
    
-   rpmin : minimum perpendicular separation
+    rpmin : minimum perpendicular separation
    
-   rpmax : maximum perpendicular separation
+    rpmax : maximum perpendicular separation
    
-   nrpbin : number of logspaced rp to use
+    nrpbin : number of logspaced rp to use
    
-   pi_max : upper limit of line of sight integration for projected statistics
+    pi_max : upper limit of line of sight integration for projected statistics
     
     
 
