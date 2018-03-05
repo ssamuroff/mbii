@@ -3,7 +3,7 @@ import treecorr
 import numpy as np 
 import argparse
 import yaml
-import mbii.lego_tools as util
+#import mbii.lego_tools as util
 from mbii.pipeline.twopoint.jackknife import ed as errors 
 
 def compute(options):
@@ -43,7 +43,7 @@ def compute(options):
 	print 'Computing correlation functions.'
 	print '11'
 	c1c1.process(cat1,cat1)
-	util.export_treecorr_output('%s/ED_corr_11%s.txt'%(options['2pt']['savedir'], suffix), c1c1, dc1c1)
+	export_treecorr_output('%s/ED_corr_11%s.txt'%(options['2pt']['savedir'], suffix), c1c1, dc1c1)
 
 	if splitflag:
 		print '22'
@@ -64,9 +64,9 @@ def compute(options):
 		print '12'
 		c2c1.process(cat2,cat1)
 
-		util.export_treecorr_output('%s/ED_corr_22%s.txt'%(options['2pt']['savedir'], suffix), c2c2, dc2c2)
-		util.export_treecorr_output('%s/ED_corr_12%s.txt'%(options['2pt']['savedir'], suffix), c1c2, dc1c2)
-		util.export_treecorr_output('%s/ED_corr_21%s.txt'%(options['2pt']['savedir'], suffix), c2c1, dc2c1)
+		export_treecorr_output('%s/ED_corr_22%s.txt'%(options['2pt']['savedir'], suffix), c2c2, dc2c2)
+		export_treecorr_output('%s/ED_corr_12%s.txt'%(options['2pt']['savedir'], suffix), c1c2, dc1c2)
+		export_treecorr_output('%s/ED_corr_21%s.txt'%(options['2pt']['savedir'], suffix), c2c1, dc2c1)
 
 	cat0 = treecorr.Catalog(x=data['x'], y=data['y'], z=data['z'], a=data['a1'], b=data['a2'], c=data['a3'])
 	c0c0 = treecorr.NVCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=options['2pt']['nbin'])
@@ -76,9 +76,18 @@ def compute(options):
 		dc0c0 = errors.jackknife(data, data, options)
 	else:
 		dc0c0 = np.zeros(c0c0.xi.size)
-	util.export_treecorr_output('%s/ED_corr_00%s.txt'%(options['2pt']['savedir'], suffix), c0c0, dc0c0)
+	export_treecorr_output('%s/ED_corr_00%s.txt'%(options['2pt']['savedir'], suffix), c0c0, dc0c0)
 
 		
 
 	print 'Done'
+
+def export_treecorr_output(filename,corr,errors):
+    R = np.exp(corr.logr)
+
+    xi = corr.xi
+
+    out = np.vstack((R,xi,corr.weight, errors))
+    print 'Saving %s'%filename
+    np.savetxt(filename, out.T)
 

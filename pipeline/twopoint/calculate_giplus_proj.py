@@ -4,8 +4,8 @@ import numpy as np
 import argparse
 import yaml
 #import mbii.lego_tools as util
-from halotools.mock_observables.alignments import gi_plus_3d 
-from mbii.pipeline.twopoint.jackknife import giplus_3d as errors 
+from halotools.mock_observables.alignments import gi_plus_projected
+from mbii.pipeline.twopoint.jackknife import giplus_proj as errors 
 
 def compute(options):
 	print 'Shape data : %s'%options['output']
@@ -61,11 +61,11 @@ def compute(options):
 			dc1c2 = np.zeros(c1c2.size)
 			dc2c1 = np.zeros(c2c1.size)
 
-		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), options['2pt']['nbin'] )
-		export_array('%s/GIplus_3d_corr_11%s.txt'%(options['2pt']['savedir'], suffix), rbins, c1c1, dc1c1)
-		export_array('%s/GIplus_3d_corr_22%s.txt'%(options['2pt']['savedir'], suffix), rbins, c2c2, dc2c2)
-		export_array('%s/GIplus_3d_corr_12%s.txt'%(options['2pt']['savedir'], suffix), rbins, c1c2, dc1c2)
-		export_array('%s/GIplus_3d_corr_21%s.txt'%(options['2pt']['savedir'], suffix), rbins, c2c1, dc2c1)
+		rpbins = np.logspace(np.log10(options['2pt']['rpmin']), np.log10(options['2pt']['rpmax']), options['2pt']['nrpbin'])
+		export_array('%s/GIplus_proj_corr_11%s.txt'%(options['2pt']['savedir'], suffix), rpbins, c1c1, dc1c1)
+		export_array('%s/GIplus_proj_corr_22%s.txt'%(options['2pt']['savedir'], suffix), rpbins, c2c2, dc2c2)
+		export_array('%s/GIplus_proj_corr_12%s.txt'%(options['2pt']['savedir'], suffix), rpbins, c1c2, dc1c2)
+		export_array('%s/GIplus_proj_corr_21%s.txt'%(options['2pt']['savedir'], suffix), rpbins, c2c1, dc2c1)
 
 	print '00'
 	cat0 = data
@@ -75,23 +75,23 @@ def compute(options):
 		dc0c0 = errors.jackknife(data, data, options)
 	else:
 		dc0c0 = np.zeros(c0c0.xi.size)
-	export_array('%s/GIplus_3d_corr_00%s.txt'%(options['2pt']['savedir'], suffix), rbins, c0c0, dc0c0)
+	export_array('%s/GIplus_proj_corr_00%s.txt'%(options['2pt']['savedir'], suffix), rpbins, c0c0, dc0c0)
 		
 
 	print 'Done'
 
-def compute_giplus(cat1, cat2, options):
-	avec = np.vstack((cat2['a1'], cat2['a2'], cat2['a3'])).T
+def compute_giplus(cat1, cat2, options, period=100.):
+	avec = np.vstack((cat2['a1'], cat2['a2'])).T
 	pvec1 = np.vstack((cat1['x'], cat1['y'], cat1['z'])).T
 	pvec2 = np.vstack((cat2['x'], cat2['y'], cat2['z'])).T
 	evec = np.sqrt(cat2['e1']*cat2['e1'] + cat2['e2']*cat2['e2'])
 
-	rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), options['2pt']['nbin'] )
+	rpbins = np.logspace(np.log10(options['2pt']['rpmin']), np.log10(options['2pt']['rpmax']), options['2pt']['nrpbin'])
+	pi_max = options['2pt']['pi_max']
 
-	gip = gi_plus_3d(pvec2, avec, evec, pvec1, rbins, period=100, num_threads=1) 
+	gip = gi_plus_projected(pvec2, avec, evec, pvec1, rpbins, pi_max, period=period, num_threads=1) 
 
 	return gip
-
 
 def export_array(path, edges, result, error):
 	x = np.sqrt(edges[:-1]*edges[1:])
