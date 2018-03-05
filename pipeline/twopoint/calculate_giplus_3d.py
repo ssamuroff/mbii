@@ -5,7 +5,7 @@ import argparse
 import yaml
 import mbii.lego_tools as util
 from halotools.mock_observables.alignments import gi_plus_3d 
-from mbii.pipeline.twopoint.jackknife import ed as errors 
+from mbii.pipeline.twopoint.jackknife import giplus_3d as errors 
 
 def compute(options):
 	print 'Shape data : %s'%options['output']
