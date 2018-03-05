@@ -1,6 +1,6 @@
 cuts :
-    npart_dm : 300 1e60
-    npart_baryon : 1000 1e60
+    npart_dm : 1000 1e60
+    npart_baryon : 300 1e60
     x : 0. 100000.
     y : 0. 100000.
     z : 0. 100000.
@@ -12,11 +12,11 @@ snapshot : 85
 
 baryon_shapes : /physics2/ssamurof/massive_black_ii/subhalo_cat-nthreshold5-proj+3d.fits
 dm_shapes : /physics2/ssamurof/massive_black_ii/subhalo_cat-nthreshold5-proj+3d.fits
-output : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v5-ndm300-nst1000.fits
+output : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v6-ndm1000-nst300.fits
 
 symmetrisation:
-    catalogue : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v5-ndm300-nst1000.fits
-    output : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v5-ndm300-nst1000-symmetrised.fits
+    catalogue : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v6-ndm1000-nst300.fits
+    output : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v6-ndm1000-nst300-symmetrised.fits
 
 errors:
     nsub : 3
@@ -25,10 +25,11 @@ errors:
 2pt:
     ctypes : ed gg
     errors: True
-    shapes : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v5-ndm300-nst1000-symmetrised_pos.fits
-    savedir: /physics2/ssamurof/massive_black_ii/2pt/ns1000_nd300/symmetrised_pos
-    split : central
+    shapes : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v6-ndm1000-nst300-symmetrised.fits
+    savedir: /physics2/ssamurof/massive_black_ii/2pt/ns300_nd1000/v6/symmetrised
+    split : most_massive
     split_val : 1
+    binning : equal
     rmin : 0.1
     rmax : 50.
     nbin : 6

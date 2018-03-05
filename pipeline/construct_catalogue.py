@@ -225,10 +225,10 @@ class catalogue:
 
 		xyz0 = np.array([h['pos'].T[0][select]/1000, h['pos'].T[1][select]/1000, h['pos'].T[2][select]/1000])
 
-		print 'Building KD tree from %d objects'%h['groupid'][select].size
+		print '---- Building KD tree from %d objects'%h['groupid'][select].size
 		tree = sps.KDTree(xyz0.T)
 
-		print 'Querying tree for all groups (%d)'%ngrp
+		print '---- Querying tree for all groups (%d)'%ngrp
 		# Query it for the 3D halo centroid (one 3 vector)
 		xyz = np.array([group_data['x'], group_data['y'], group_data['z']])
 		R,ind = tree.query(xyz.T, k=1)
@@ -382,8 +382,6 @@ cat.array['e2_dm'] = e * np.sin(2*phi)
 # Now find the associated halo per galaxy
 # We'll need to read out this information from the database
 if config['include']['halo_matching']:
-	halos = halo_wrapper(config['snapshot'], verbosity=args.verbosity)
-	cat.find_cs_flag(halos.group_info)
 	R, ind, info = halos.populate(cat.array)
 
 	cat.array['halo_id'] = info['groupId']
