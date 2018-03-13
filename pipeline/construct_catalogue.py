@@ -97,7 +97,7 @@ class halo_wrapper:
 		if self.verbosity>0:
 			print 'Building group KD tree'
 
-		# Build the tree
+		# Build the tree of groups
 		xyz0 = np.array([self.group_info['x'], self.group_info['y'], self.group_info['z']])
 		tree = sps.KDTree(xyz0.T)
 
@@ -107,6 +107,8 @@ class halo_wrapper:
 		# Query it for each 3D galaxy position
 		xyz = np.array([data['x'], data['y'], data['z']])
 		R,ind = tree.query(xyz.T, k=1)
+
+		import pdb ; pdb.set_trace()
 
 		return R, ind, self.group_info[ind]
 
@@ -229,12 +231,18 @@ class catalogue:
 		tree = sps.KDTree(xyz0.T)
 
 		print '---- Querying tree for all groups (%d)'%ngrp
-		# Query it for the 3D halo centroid (one 3 vector)
+		# Query it for the 3D halo centroid (one 3 vector per halo)
 		xyz = np.array([group_data['x'], group_data['y'], group_data['z']])
 		R,ind = tree.query(xyz.T, k=1)
 
 		# Store the results in the same shape as the subhalo table
 		cflag[ind]+=1
+
+		# Do the same thing, but the other way around
+		# to get a centroid-galaxy distance for each catalogue object
+		print '---- Calculating galaxy offsets'
+		inverted_tree = sps.KDTree(xyz.T)
+		R_pergal,ind_pergal = inverted_tree.query(xyz0.T, k=1)
 
 		print 'Building mass flags.'
 		Mm = np.array(h['lenbytype'].T[1]) # DM masses
@@ -264,7 +272,7 @@ class catalogue:
 #		    msubflags[(h['lenbytype'].T[0][select]==h['lenbytype'].T[0][select].max())]+=1
 #		    massflag[select]=msubflags
 
-		return cflag, massflag
+		return cflag, massflag, R_pergal
 
 		
 	def export(self, outpath):
@@ -313,7 +321,7 @@ cat = catalogue()
 
 # Do the central/satellite flagging
 halos = halo_wrapper(config['snapshot'], verbosity=args.verbosity)
-spatial_cflag, mass_cflag = cat.find_cs_flag(halos.group_info, h, dm, baryons)
+spatial_cflag, mass_cflag, R_pergal = cat.find_cs_flag(halos.group_info, h, dm, baryons)
 
 # Impose the selection cuts, as specified in the configuration file
 mask = cat.build_selection_mask(config['cuts'], baryons, dm, h, verbosity=args.verbosity)
@@ -323,6 +331,7 @@ cat.array = np.zeros(baryons[mask].size, dtype=dt)
 
 cat.array['most_massive'] = mass_cflag[mask]
 cat.array['spatial_central'] = spatial_cflag[mask]
+cat.array['rh'] = R_pergal[mask]
 
 # The ids, masses and particle numbers are fairly straightforwards to obtain 
 i = np.arange(0, baryons.size, 1)
@@ -386,9 +395,8 @@ if config['include']['halo_matching']:
 
 	cat.array['halo_id'] = info['groupId']
 
-	Rg, indg, infog = halos.groups(cat.array)
-	cat.array['rh'] = Rg
-
+	#Rg, indg, infog = halos.groups(cat.array)
+	#cat.array['rh'] = Rg
 
 
 else:
