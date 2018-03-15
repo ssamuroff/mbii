@@ -3,12 +3,15 @@ import treecorr
 import numpy as np 
 import argparse
 import yaml
-#import mbii.lego_tools as util
+import mbii.lego_tools as util
 from halotools.mock_observables.alignments import gi_plus_projected
 from mbii.pipeline.twopoint.jackknife import giplus_proj as errors 
 
 def compute(options):
 	print 'Shape data : %s'%options['output']
+
+	binning = options['2pt']['binning']
+
 	data = fi.FITS(options['2pt']['shapes'])[-1].read()
 
 	splitflag=options['2pt']['split']
@@ -22,6 +25,11 @@ def compute(options):
 		print 'No catalogue split required.'
 		mask = np.ones(data.size).astype(bool)
 
+	if binning=='log':
+		rpbins = np.logspace(np.log10(options['2pt']['rpmin']), np.log10(options['2pt']['rpmax']), options['2pt']['nrpbin'])
+	elif binning=='equal':
+		rpbins = util.equalise_binning(data[mask], data[mask], options['2pt']['rpmin'], options['2pt']['rpmax'], options['2pt']['nbin'])
+
 	print 'Setting up correlations'
 
 	# don't need randoms here if we know the period of the box
@@ -31,7 +39,7 @@ def compute(options):
 	c1c1 = compute_giplus(cat1, cat1, options) 
 
 	if options['2pt']['errors']:
-		dc1c1 = errors.jackknife(data[mask], data[mask], options)
+		dc1c1 = errors.jackknife(data[mask], data[mask], options, rpbins=rpbins)
 	else:
 		dc1c1 = np.zeros(c1c1.size)
 
@@ -43,17 +51,17 @@ def compute(options):
 
 	if splitflag:
 		print '22'
-		c2c2 = compute_giplus(cat2, cat2, options)
+		c2c2 = compute_giplus(cat2, cat2, options, rpbins=rpbins)
 	
 		print '12'
-		c1c2 = compute_giplus(cat1, cat2, options)
+		c1c2 = compute_giplus(cat1, cat2, options, rpbins=rpbins)
 		print '21'
-		c2c1 = compute_giplus(cat2, cat1, options)
+		c2c1 = compute_giplus(cat2, cat1, options, rpbins=rpbins)
 
 		if options['2pt']['errors']:
-			dc2c2 = errors.jackknife(cat2, cat2, options)
-			dc1c2 = errors.jackknife(cat1, cat2, options)
-			dc2c1 = errors.jackknife(cat2, cat1, options)
+			dc2c2 = errors.jackknife(cat2, cat2, options, rpbins=rpbins)
+			dc1c2 = errors.jackknife(cat1, cat2, options, rpbins=rpbins)
+			dc2c1 = errors.jackknife(cat2, cat1, options, rpbins=rpbins)
 
 		else:
 			dc1c1 = np.zeros(c1c1.size)
@@ -61,7 +69,7 @@ def compute(options):
 			dc1c2 = np.zeros(c1c2.size)
 			dc2c1 = np.zeros(c2c1.size)
 
-		rpbins = np.logspace(np.log10(options['2pt']['rpmin']), np.log10(options['2pt']['rpmax']), options['2pt']['nrpbin'])
+		
 		export_array('%s/GIplus_proj_corr_11%s.txt'%(options['2pt']['savedir'], suffix), rpbins, c1c1, dc1c1)
 		export_array('%s/GIplus_proj_corr_22%s.txt'%(options['2pt']['savedir'], suffix), rpbins, c2c2, dc2c2)
 		export_array('%s/GIplus_proj_corr_12%s.txt'%(options['2pt']['savedir'], suffix), rpbins, c1c2, dc1c2)
@@ -69,10 +77,10 @@ def compute(options):
 
 	print '00'
 	cat0 = data
-	c0c0 = compute_giplus(cat0, cat0, options)
+	c0c0 = compute_giplus(cat0, cat0, options, rpbins=rpbins)
 	
 	if options['2pt']['errors']:
-		dc0c0 = errors.jackknife(data, data, options)
+		dc0c0 = errors.jackknife(data, data, options, rpbins=rpbins)
 	else:
 		dc0c0 = np.zeros(c0c0.xi.size)
 	export_array('%s/GIplus_proj_corr_00%s.txt'%(options['2pt']['savedir'], suffix), rpbins, c0c0, dc0c0)
@@ -80,13 +88,16 @@ def compute(options):
 
 	print 'Done'
 
-def compute_giplus(cat1, cat2, options, period=100.):
+def compute_giplus(cat1, cat2, options, period=100., rpbins=None):
 	avec = np.vstack((cat2['a1'], cat2['a2'])).T
 	pvec1 = np.vstack((cat1['x'], cat1['y'], cat1['z'])).T
 	pvec2 = np.vstack((cat2['x'], cat2['y'], cat2['z'])).T
 	evec = np.sqrt(cat2['e1']*cat2['e1'] + cat2['e2']*cat2['e2'])
 
-	rpbins = np.logspace(np.log10(options['2pt']['rpmin']), np.log10(options['2pt']['rpmax']), options['2pt']['nrpbin'])
+	if options['2pt']['binning']=='log' and (rpbins is None):
+		rpbins = np.logspace(np.log10(options['2pt']['rpmin']), np.log10(options['2pt']['rpmax']), options['2pt']['nrpbin'])
+	elif options['2pt']['binning']=='equal' and (rpbins is None):
+		rpbins = util.equalise_binning(cat1,cat2,options['2pt']['rpmin'], options['2pt']['rpmax'], options['2pt']['nbin'])
 	pi_max = options['2pt']['pi_max']
 
 	gip = gi_plus_projected(pvec2, avec, evec, pvec1, rpbins, pi_max, period=period, num_threads=1) 
