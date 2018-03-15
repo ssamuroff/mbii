@@ -108,8 +108,6 @@ class halo_wrapper:
 		xyz = np.array([data['x'], data['y'], data['z']])
 		R,ind = tree.query(xyz.T, k=1)
 
-		import pdb ; pdb.set_trace()
-
 		return R, ind, self.group_info[ind]
 
 
@@ -244,6 +242,9 @@ class catalogue:
 		inverted_tree = sps.KDTree(xyz.T)
 		R_pergal,ind_pergal = inverted_tree.query(xyz0.T, k=1)
 
+		Rp = np.zeros(subhalo_data_dm['x'].size)-1
+		Rp[select] = R_pergal
+
 		print 'Building mass flags.'
 		Mm = np.array(h['lenbytype'].T[1]) # DM masses
 		Mg = np.array(h['lenbytype'].T[0]) # gas masses
@@ -272,7 +273,7 @@ class catalogue:
 #		    msubflags[(h['lenbytype'].T[0][select]==h['lenbytype'].T[0][select].max())]+=1
 #		    massflag[select]=msubflags
 
-		return cflag, massflag, R_pergal
+		return cflag, massflag, Rp
 
 		
 	def export(self, outpath):
@@ -392,11 +393,7 @@ cat.array['e2_dm'] = e * np.sin(2*phi)
 # We'll need to read out this information from the database
 if config['include']['halo_matching']:
 	R, ind, info = halos.populate(cat.array)
-
 	cat.array['halo_id'] = info['groupId']
-
-	#Rg, indg, infog = halos.groups(cat.array)
-	#cat.array['rh'] = Rg
 
 
 else:
