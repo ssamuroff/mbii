@@ -4,9 +4,10 @@ import numpy as np
 import argparse
 import yaml
 import copy
+import mbii.lego_tools as util
 from halotools.mock_observables.alignments import gi_plus_projected
 
-def jackknife(data1, data2, options, verbosity=0):
+def jackknife(data1, data2, options, verbosity=0, rpbins=None):
 	nsub = options['errors']['nsub']
 	if verbosity>0:
 		print 'Calculating jackknife errorbars - %dx%d subvolumes'%(nsub,nsub) 
@@ -42,7 +43,7 @@ def jackknife(data1, data2, options, verbosity=0):
 
 				cat1 = data1[mask1]
 				cat2 = data2[mask2]
-				gi = compute_giplus(cat1, cat2, options, period=100.)
+				gi = compute_giplus(cat1, cat2, options, period=100., rpbins=rpbins)
 
 				GI.append(copy.deepcopy(gi))
 				nprocessed+=1
@@ -53,13 +54,16 @@ def jackknife(data1, data2, options, verbosity=0):
 		print 'Done subsampling.'
 	return np.array(GI).std(axis=0)
 
-def compute_giplus(cat1, cat2, options, period=100.):
+def compute_giplus(cat1, cat2, options, period=100., rpbins=None):
 	avec = np.vstack((cat2['a1'], cat2['a2'])).T
 	pvec1 = np.vstack((cat1['x'], cat1['y'], cat1['z'])).T
 	pvec2 = np.vstack((cat2['x'], cat2['y'], cat2['z'])).T
 	evec = np.sqrt(cat2['e1']*cat2['e1'] + cat2['e2']*cat2['e2'])
 
-	rpbins = np.logspace(np.log10(options['2pt']['rpmin']), np.log10(options['2pt']['rpmax']), options['2pt']['nrpbin'])
+	if (options['2pt']['binning']=='log') and (rpbins is None):
+		rpbins = np.logspace(np.log10(options['2pt']['rpmin']), np.log10(options['2pt']['rpmax']), options['2pt']['nrpbin'])
+	elif (options['2pt']['binning']=='equal') and (rpbins is None):
+		rpbins = util.equalise_binning(options['2pt']['rpmin'], options['2pt']['rpmax'], options['2pt']['nbin'])
 	pi_max = options['2pt']['pi_max']
 
 	gip = gi_plus_projected(pvec2, avec, evec, pvec1, rpbins, pi_max, period=period, num_threads=1) 
