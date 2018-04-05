@@ -7,21 +7,93 @@ plt.switch_backend('agg')
 #import halotools.mock_observables as pretending
 from mbii.readsubhalo import *
 from mbii.properties import *
+#import mbii.tests as tests
 import glob
 import numpy as np
 import treecorr
 #import astropy.table as tb
 #import astropy.io.fits as pf
 from numpy.core.records import fromarrays
-import pymysql as mdb
 
 
 
+def equalise_binning(data1, data2, rmin, rmax, nbin):
+    """Iteratively shift the bin edges and redo the pair counting until the bins
+    contain equal numbers of pairs."""
+
+    rbins = np.logspace(np.log10(rmin), np.log10(rmax), nbin)
+    counts = npairs_3d(sample1, sample2, rbins,
+                       verbose=False, num_threads=1,
+                       approx_cell1_size=None,
+                       approx_cell2_size=None)
+
+    import pdb ; pdb.set_trace()
+    
+
+def find_equal_bin_edges(x,nbins,w=None):
+    """
+    For an array x, returns the boundaries of nbins equal (possibly weighted by w) bins.
+    """
+
+    if w is None:
+      xs=np.sort(x)
+      r=np.linspace(0.,1.,nbins+1.)*(len(x)-1)
+      return xs[r.astype(int)]
+
+    fail=False
+    ww=np.sum(w)/nbins
+    i=np.argsort(x)
+    k=np.linspace(0.,1.,nbins+1.)*(len(x)-1)
+    k=k.astype(int)
+    r=np.zeros((nbins+1))
+    ist=0
+    for j in xrange(1,nbins):
+      # print k[j],r[j-1]
+      if k[j]<r[j-1]:
+        print 'Random weight approx. failed - attempting brute force approach'
+        fail=True
+        break
+      w0=np.sum(w[i[ist:k[j]]])
+      if w0<=ww:
+        for l in xrange(k[j],len(x)):
+          w0+=w[i[l]]
+          if w0>ww:
+            r[j]=x[i[l]]
+            ist=l
+            break
+      else:
+        for l in xrange(k[j],0,-1):
+          w0-=w[i[l]]
+          if w0<ww:
+            r[j]=x[i[l]]
+            ist=l
+            break
+
+    if fail:
+
+      ist=np.zeros((nbins+1))
+      ist[0]=0
+      for j in xrange(1,nbins):
+        wsum=0.
+        for k in xrange(ist[j-1].astype(int),len(x)):
+          wsum+=w[i[k]]
+          if wsum>ww:
+            r[j]=x[i[k-1]]
+            ist[j]=k
+            break
+
+    r[0]=x[i[0]]
+    r[-1]=x[i[-1]]
+
+    return r
 
 
-def symmetrise_catalogue3(data=None,mask=None,filename='/home/ssamurof/massive_black_ii/subhalo_cat-nthreshold5.fits', savedir=None, replace=False, verbose=True, nmin=2, rank=0, size=1):
+
+def symmetrise_catalogue3(data=None, seed=4000, mask=None,filename='/home/ssamurof/massive_black_ii/subhalo_cat-nthreshold5.fits', savedir=None, replace=False, verbose=True, nmin=0, rank=0, size=1):
     root_folder='/physics/yfeng1/mb2'
     snapshot='085'
+
+    np.random.seed(99000)
 
     if mask is None:
         mask = np.ones(data.size).astype(bool)
@@ -40,6 +112,10 @@ def symmetrise_catalogue3(data=None,mask=None,filename='/home/ssamurof/massive_b
     for name in outdat.dtype.names:
         outdat[name] = data[name]
 
+    outdat = add_col(outdat, 'x0', np.array([0]*outdat.size), dtype=float)
+    outdat = add_col(outdat, 'y0', np.array([0]*outdat.size), dtype=float)
+    outdat = add_col(outdat, 'z0', np.array([0]*outdat.size), dtype=float)
+
     i0=0
     for i, g in enumerate(groups):
 
@@ -54,12 +130,12 @@ def symmetrise_catalogue3(data=None,mask=None,filename='/home/ssamurof/massive_b
             print 'Skipping halo %d as it contains <%d galaxies'%(g,nmin)
             continue
 
-        symmetrised_halo = symmetrise_halo4(data[select], gids=group_ids[select], verbose=False, g=g)
+        symmetrised_halo = symmetrise_halo4(data[select], gids=group_ids[select], verbose=True, g=g)
 
         if verbose:
             print g, ngal
 
-        for name in data.dtype.names:
+        for name in outdat.dtype.names:
             outdat[name][select] = symmetrised_halo[name]
 
         i0+=ngal
@@ -71,119 +147,244 @@ def symmetrise_catalogue3(data=None,mask=None,filename='/home/ssamurof/massive_b
     print 'Done'
     return 0
 
+def get_wrapped_positions(g, data):
+    # Query the DB for the halo centre
+    info = find_centre(g)
+    
+    for comp in ['x','y','z']:
+        if (data[comp]<5).max() and (data[comp]>95).max():
+            # Shift everything back down to the lower edge of the simulation box
+            # This will produce negative positions, which is fine if we shift the
+            # galaxies outside the box back after the rotation
+            data[comp][data[comp]>95]-=100
+
+        # This should handle the case where the centroid is on the opposite
+        # side of the box to all of the galaxies surviving cuts 
+        if ( ((info[comp]/1000)>95) and (data[comp]<5).max() ) or ( ((info[comp]/1000)<5) and (data[comp]>95).max() ):
+                info[comp]-=100*1000
+
+    x0,y0,z0 = info['x']/1000., info['y']/1000., info['z']/1000.
+    positions = np.array([data['x']-x0, data['y']-y0, data['z']-z0])
+
+    return data, positions, (x0,y0,z0)
+
 def symmetrise_halo4(data, gids=None, verbose=True, g=None):
     if verbose:
         print 'Will apply one random rotation per subhalo'
-    np.random.seed(9000)
 
     # Work out the centroid about which to rotate
     import weightedstats as ws
     N = data['npart_baryon']
     # Let's try something slightly different here
     # get the centroid position from the database rather than trying to recalculate it
-    info = find_centre(g)
-
-    #info = find_mean_position(g, data)
-    x0, y0, z0 = info['x']/1000., info['y']/1000., info['z']/1000.
-
+    
+    data, positions, (x0, y0, z0) = get_wrapped_positions(g, data) 
     cent = np.array([x0,y0,z0])
-    positions = np.array([data['x']-x0, data['y']-y0, data['z']-z0])
-    c = np.array([data['c3'], data['c2'], data['c1']])
-    c_dm = np.array([data['c3_dm'], data['c2_dm'], data['c1_dm']])
-    a = np.array([data['a3'], data['a2'], data['a1']])
-    a_dm = np.array([data['a3_dm'], data['a2_dm'], data['a1_dm']])
-    b = np.array([data['b3'], data['b2'], data['b1']])
-    b_dm = np.array([data['b3_dm'], data['b2_dm'], data['b1_dm']])
 
     rot = np.zeros(data.size, dtype=data.dtype)
     n = data.size
     for name in data.dtype.names:
         rot[name][:n] = data[name]
 
+    rot = add_col(rot, 'x0', np.array([x0]*data.size), dtype=float)
+    rot = add_col(rot, 'y0', np.array([y0]*data.size), dtype=float)
+    rot = add_col(rot, 'z0', np.array([z0]*data.size), dtype=float)
+
     for i in xrange(n):
 
         # We can skip the rotation for central objects
-        if (data['central'][i]==1):
-            print 'skipping object -- it is classified as a central galaxy'
+        if (data['most_massive'][i]==1):
+            if verbose:
+                print 'skipping object -- it is classified as a central galaxy'
+            pos = positions.T[i]
+            R = np.sqrt(sum(pos*pos))
+            rot['rh'][i] = R
             continue
 
         if verbose:
             print i,
 
-        if verbose:
-            print alpha, beta, gamma
-
-        # Cartesian galaxy position
+        # Cartesian galaxy position, relative to the halo centre
         pos = positions.T[i]
 
         # Generate a new pair of randomised position angles on a sphere of radius R
-        phi_shifted = (np.random.rand()-0.5)*np.pi
-        theta_shifted = (np.random.rand()-0.5)*np.pi
+        phi_shifted = np.random.rand() * np.pi # range: [0, \pi]
+        theta_shifted = (np.random.rand()-0.5) * 2 * np.pi # range: [-\pi, \pi]
 
         # Galaxy position in radial coordinates
         R = np.sqrt(sum(pos*pos))
-        phi = np.arccos(pos[2]/R)
+        phi = np.arccos(pos[2]/R) * pos[0]/abs(pos[0])
         theta = np.arcsin(pos[1]/R/np.sin(phi))
 
-        # Work out the rotated galaxy position
-        xrot = R * np.sin(phi_shifted) * np.cos(theta_shifted)
-        yrot = R * np.sin(phi_shifted) * np.sin(theta_shifted)
-        zrot = R * np.cos(phi_shifted)
 
-        rotated = np.array([xrot, yrot, zrot])
+        #import pdb ; pdb.set_trace()
+        Rxyz = build_rotation_matrix()
+
+
+
+       # g0 = np.array([ [np.dot(pos,rotated), -get_norm(np.cross(pos,rotated)), 0], [get_norm(np.cross(pos,rotated)), np.dot(pos,rotated),  0], [0,0,1]])
+       # f0 = np.array([ pos, (rotated-np.dot(pos,rotated)*pos)/get_norm(rotated-np.dot(pos,rotated)*pos), np.cross(rotated,pos) ])
+       # Rmat = f0*g0/f0
+
+        # Work out the rotated galaxy position
+        #xrot = R * np.sin(phi_shifted) * np.cos(theta_shifted)
+        #yrot = R * np.sin(phi_shifted) * np.sin(theta_shifted)
+        #zrot = R * np.cos(phi_shifted)
+
+        #rotated = np.array([xrot, yrot, zrot])
 
         # Then do the 3D shape vector
-        arot = rotate_shape_vector(data[i], phi_shifted, theta_shifted, phi, theta, axis='a%d')
-        brot = rotate_shape_vector(data[i], phi_shifted, theta_shifted, phi, theta, axis='b%d')
-        crot = rotate_shape_vector(data[i], phi_shifted, theta_shifted, phi, theta, axis='c%d')
+        #Rxyz = np.array([[np.cos(dtheta)*np.cos(dpsi), -np.cos(dphi)*np.sin(dpsi) + np.sin(dphi)*np.sin(dtheta)*np.cos(dpsi), np.sin(dpsi)*np.sin(dphi) + np.sin(dtheta)*np.cos(dpsi)*np.cos(dphi) ],
+        #    [np.sin(dpsi)*np.cos(dtheta), np.cos(dphi)*np.cos(dpsi) + np.sin(dphi)*np.sin(dtheta)*np.sin(dpsi), -np.sin(dphi)*np.cos(dpsi) + np.cos(dphi)*np.sin(dphi)*np.sin(dpsi)],
+        #    [-np.sin(dtheta), np.sin(dphi)*np.cos(dtheta), np.cos(dtheta)*np.cos(dphi)]])
 
-        arot_dm = rotate_shape_vector(data[i], phi_shifted, theta_shifted, phi, theta, axis='a%d_dm')
-        brot_dm = rotate_shape_vector(data[i], phi_shifted, theta_shifted, phi, theta, axis='b%d_dm')
-        crot_dm = rotate_shape_vector(data[i], phi_shifted, theta_shifted, phi, theta, axis='c%d_dm')
+        rotated = np.dot(Rxyz,pos)
+        xrot = rotated[0]
+        yrot = rotated[1]
+        zrot = rotated[2]
+
+        if verbose:
+         #   print 'ROTATING THROUGH 180 deg'
+            print 'New position (x, y, z) : %3.3f, %3.3f %3.3f'%(xrot,yrot,zrot)
+
+        a3d = np.array([data['a1'][i], data['a2'][i], data['a3'][i]])
+        b3d = np.array([data['b1'][i], data['b2'][i], data['b3'][i]])
+        c3d = np.array([data['c1'][i], data['c2'][i], data['c3'][i]])
+        arot = np.dot(Rxyz,a3d)
+        brot = np.dot(Rxyz,b3d)
+        crot = np.dot(Rxyz,c3d)
+
+        a3d_dm = np.array([data['a1_dm'][i], data['a2_dm'][i], data['a3_dm'][i]])
+        b3d_dm = np.array([data['b1_dm'][i], data['b2_dm'][i], data['b3_dm'][i]])
+        c3d_dm = np.array([data['c1_dm'][i], data['c2_dm'][i], data['c3_dm'][i]])
+        arot_dm = np.dot(Rxyz,a3d_dm)
+        brot_dm = np.dot(Rxyz,b3d_dm)
+        crot_dm = np.dot(Rxyz,c3d_dm)
+
+        #import pdb ; pdb.set_trace()
+
+        #arot = #rotate_shape_vector(data[i], theta_shifted , phi_shifted, theta, phi, axis='a%d')
+        #brot = #rotate_shape_vector(data[i], theta_shifted , phi_shifted, theta, phi, axis='b%d')
+        #crot = #rotate_shape_vector(data[i], theta_shifted , phi_shifted, theta, phi, axis='c%d')
+
+        #arot_dm = #rotate_shape_vector(data[i], theta_shifted , phi_shifted, theta, phi, axis='a%d_dm')
+        #brot_dm = #rotate_shape_vector(data[i], theta_shifted , phi_shifted, theta, phi, axis='b%d_dm')
+        #crot_dm = #rotate_shape_vector(data[i], theta_shifted , phi_shifted, theta, phi, axis='c%d_dm')
         
         rot['npart_baryon'][i] = data['npart_baryon'][i]
-
+        rot['rh'][i] = R
         
         rot['x'][i] = copy.deepcopy(rotated[0])+x0
         rot['y'][i] = copy.deepcopy(rotated[1])+y0
         rot['z'][i] = copy.deepcopy(rotated[2])+z0
 
+        # Need to shift the objects left outside the box by the rotation back
+        # to the other side if the universe 
+        if verbose: 
+            print 'Rotation leaves %d objects outside the simulation box.'%(rot['x'][(rot['x']<0) | (rot['y']<0) | (rot['z']<0)].size)
+
+        if (rot['x'][i]<0):
+            rot['x'][i]+=100
+        if (rot['y'][i]<0):
+            #print 'Shifting in y %3.3f'%rot['y'][i]
+            rot['y'][i]+=100
+        if (rot['z'][i]<0):
+            #print 'Shifting in z %3.3f'%rot['z'][i]
+            rot['z'][i]+=100
+        if (rot['x'][i]>100):
+            rot['x'][i]-=100
+        if (rot['y'][i]>100):
+            rot['y'][i]-=100
+        if (rot['z'][i]>100):
+            rot['z'][i]-=100
+       
+        rot['c3'][i]=crot[2]
+        rot['c2'][i]=crot[1]
+        rot['c1'][i]=crot[0]
+        rot['b3'][i]=brot[2]
+        rot['b2'][i]=brot[1]
+        rot['b1'][i]=brot[0]
+        rot['a3'][i]=arot[2]
+        rot['a2'][i]=arot[1]
+        rot['a1'][i]=arot[0]
+
+        rot['c3_dm'][i]=crot_dm[2]
+        rot['c2_dm'][i]=crot_dm[1]
+        rot['c1_dm'][i]=crot_dm[0]
+        rot['b3_dm'][i]=brot_dm[2]
+        rot['b2_dm'][i]=brot_dm[1]
+        rot['b1_dm'][i]=brot_dm[0]
+        rot['a3_dm'][i]=arot_dm[2]
+        rot['a2_dm'][i]=arot_dm[1]
+        rot['a1_dm'][i]=arot_dm[0]
+
+        # Work out the projected 2D ellipticities
+        a3d = np.array([[rot['a1'][i], rot['a2'][i], rot['a3'][i]]])
+        b3d = np.array([[rot['b1'][i], rot['b2'][i], rot['b3'][i]]])
+        c3d = np.array([[rot['c1'][i], rot['c2'][i], rot['c3'][i]]])
+        q3d = np.array([np.sqrt(rot['lambda_a'][i]/rot['lambda_c'][i])])
+        s3d = np.array([np.sqrt(rot['lambda_b'][i]/rot['lambda_c'][i])])
+        e1,e2 = project_3d_shape(a3d, b3d, c3d, q3d, s3d)
+        rot['e1'][i] = e1
+        rot['e2'][i] = e2
+
         #import pdb ; pdb.set_trace()
 
-        rot['c3'][i]=crot[0]
-        rot['c2'][i]=crot[1]
-        rot['c1'][i]=crot[2]
-        rot['b3'][i]=brot[0]
-        rot['b2'][i]=brot[1]
-        rot['b1'][i]=brot[2]
-        rot['a3'][i]=arot[0]
-        rot['a2'][i]=arot[1]
-        rot['a1'][i]=arot[2]
+        
 
-        rot['c3_dm'][i]=crot_dm[0]
-        rot['c2_dm'][i]=crot_dm[1]
-        rot['c1_dm'][i]=crot_dm[2]
-        rot['b3_dm'][i]=brot_dm[0]
-        rot['b2_dm'][i]=brot_dm[1]
-        rot['b1_dm'][i]=brot_dm[2]
-        rot['a3_dm'][i]=arot_dm[0]
-        rot['a2_dm'][i]=arot_dm[1]
-        rot['a1_dm'][i]=arot_dm[2]
+        #if abs(np.sqrt(e1*e1+e2*e2))>0.75:
+        #    import pdb ; pdb.set_trace()
+        
 
-        # Also rotate the ellipticities
-        phim = np.arctan2(rot['a2'][i], rot['a1'][i])
-        em = np.sqrt(rot['e1'][i]*rot['e1'][i]+rot['e2'][i]*rot['e2'][i])
-        rot['e1'][i] = em * np.cos(2*phim)
-        rot['e2'][i] = em * np.sin(2*phim)
 
-        phid = np.arctan2(rot['a2_dm'][i], rot['a1_dm'][i])
-        ed = np.sqrt(rot['e1_dm'][i]*rot['e1_dm'][i]+rot['e2_dm'][i]*rot['e2_dm'][i])
-        rot['e1_dm'][i] = ed * np.cos(2*phid)
-        rot['e2_dm'][i] = ed * np.sin(2*phid)
-
+        # Work out the projected 2D ellipticities
+        a3d = np.array([[rot['a1_dm'][i], rot['a2_dm'][i], rot['a3_dm'][i]]])
+        b3d = np.array([[rot['b1_dm'][i], rot['b2_dm'][i], rot['b3_dm'][i]]])
+        c3d = np.array([[rot['c1_dm'][i], rot['c2_dm'][i], rot['c3_dm'][i]]])
+        q3d = np.array([np.sqrt(rot['lambda_a_dm'][i]/rot['lambda_c_dm'][i])])
+        s3d = np.array([np.sqrt(rot['lambda_b_dm'][i]/rot['lambda_c_dm'][i])])
+        e1,e2 = project_3d_shape(a3d, b3d, c3d, q3d, s3d)
+        rot['e1_dm'][i] = e1
+        rot['e2_dm'][i] = e2
 
     return rot
 
+
+
+
+def rotate_shape_vector(data, theta_shifted, phi_shifted, theta, phi, axis='a%d'):
+    # Axis vector in Cartesian, then radial coordinates
+    # assume it's normalised correctly in 3D
+    avec = np.array([data[axis%1], data[axis%2], data[axis%3]])
+    #phi_s = np.arccos(avec[2]) * avec[0]/abs(avec[0])
+    theta_s = np.arctan2(avec[1],avec[0]) #np.arcsin(avec[1]/np.sin(phi_s))
+    axy=np.sqrt(avec[0]*avec[0]+avec[1]*avec[1])
+    phi_s = np.pi - np.arctan2(avec[2], axy)
+
+    # Work out the correct new shape vector, preserving the relative orientation to the centre of mass
+    dphi = phi_s - phi
+    dtheta = theta_s - theta
+
+    phi_s_shifted = phi_shifted + dphi
+    theta_s_shifted = theta_shifted + dtheta
+
+    axy0 = np.sin(phi_s_shifted)
+    ax_shifted = axy0 * np.cos(theta_s_shifted)
+    ay_shifted = axy0 * np.sin(theta_s_shifted)
+    az_shifted = axy0 * np.tan(np.pi - phi_s_shifted)
+
+    rot = np.array([ax_shifted, ay_shifted, az_shifted])
+
+    return rot
+
+def evaluate_ellipticity(cat):
+    # Work out the ellipticities from the projected axis lengths for a catalogue of galaxies 
+    phi = np.arctan2(cat['a2_2d'], cat['a1_2d'])
+    q = np.sqrt(cat['lambda2_2d']/cat['lambda1_2d'])
+    e = (q-1)/(q+1)
+    e[np.invert(np.isfinite(e))] = 0.0
+
+    return e, e*np.cos(2*phid), e*np.sin(2*phid)
 
 
 
@@ -554,6 +755,7 @@ def plot_ellipse(semimaj=1,semimin=1,phi=0,x_cent=0,y_cent=0,theta_num=1e3,ax=No
 
 def find_centre(g):
     """Locate the mass centroid of a particular group of galaxies"""
+    import pymysql as mdb
     sql = 'SELECT x,y,z FROM subfind_groups WHERE groupId=%d AND snapnum=85;'%g
 
     sqlserver='localhost' ; user='flanusse' ; password='mysqlpass' ; dbname='mb2_hydro'
@@ -983,22 +1185,70 @@ def export_treecorr_output(filename,corr,errors):
     print 'Saving %s'%filename
     np.savetxt(filename, out.T)
 
-def rotate_shape_vector(data, theta_shifted, phi_shifted, theta, phi, axis='a%d'):
-    # Axis vector in Cartesian, then radial coordinates
-    # assume it's normalised correctly in 3D
-    avec = np.array([data[axis%1], data[axis%2], data[axis%3]])
-    beta = np.arccos(avec[2])
-    alpha = np.arcsin(avec[1]/np.sin(beta))
+# This script module contains a number of utility functions
+import numpy as np
+import treecorr as tc
 
-    # Work out the correct new shape vector, preserving the relative orientation to the centre of mass
-    alpha_shifted = theta_shifted - theta + alpha
-    beta_shifted = phi_shifted - phi + beta
+def build_rotation_matrix():
+    """Generates a random rotation matrix, 
+    which transforms a given 3D position vector to a random position on the sphere.
+    Usage : rotated = R.unrotated"""
+    u1 = np.random.rand()
+    u2 = np.random.rand()
 
-    rot = [np.sin(beta_shifted)*np.cos(alpha_shifted), np.sin(beta_shifted)*np.sin(alpha_shifted), np.cos(beta_shifted)]
+    # Use two random values from a uniform distribution to generate an axis about which to rotate
+    theta = np.arccos(1*u1-1) 
+    phi = 2 * np.pi * u2
 
-    return rot
+    # Work out a Cartesian unit vector defined by the rotation axis 
+    x = np.sin(theta)*np.cos(phi)
+    y = np.sin(theta)*np.sin(phi)
+    z = np.cos(theta)
+    vec= np.array([x,y,z])
+    vec/=get_norm(vec)
+
+    # Now generate a random rotation angle about that axis
+    alpha = np.random.rand() * 2 * np.pi
+    cosa = np.cos(alpha)
+    sina = np.sin(alpha)
+    ux = vec[0]
+    uy = vec[1]
+    uz = vec[2]
+
+    # Construct the 3x3 rotation matrix
+    R = np.array([ [ (cosa + ux*ux*(1-cosa)), (ux*uy*(1-cosa) - uz*sina), (ux*uz*(1-cosa) + uy*sina)],
+    [uy*ux*(1-cosa) + uz*sina, cosa + uy*uy*(1-cosa), uy*uz*(1-cosa) - ux*sina],
+    [uz*ux*(1-cosa) - uy*sina, uz*uy*(1-cosa) + ux*sina, cosa + uz*uz*(1-cosa) ]] )
+
+    return R
 
 
+
+
+def get_norm(vec):
+    return np.sqrt(sum([v*v for v in vec])) 
+
+def project_3d_shape(a3d, b3d, c3d, q3d, s3d):
+    """
+    This function projects 3D ellipsoidal shapes onto a 2D ellipse and returns
+    the 2 cartesian components of the ellipticity.
+
+    See Piras2017:1707.06559 section 3.1
+    and Joachimi2013:1203.6833
+    """
+
+    s = np.stack([a3d, b3d, c3d])
+    w = np.stack([np.ones_like(q3d), q3d, s3d])
+
+    k = np.sum(s[:,:,0:2]*np.expand_dims(s[:,:,2], axis=-1) / np.expand_dims(w[:,:]**2, axis=-1), axis=0)
+    a2 =np.sum(s[:,:,2]**2/w[:,:]**2, axis=0)
+    Winv = np.sum(np.einsum('ijk,ijl->ijkl', s[:,:,0:2], s[:,:,0:2]) /
+               np.expand_dims(np.expand_dims(w[:,:]**2,-1),-1), axis=0) - np.einsum('ij,ik->ijk', k,k)/np.expand_dims(np.expand_dims(a2,-1),-1)
+    W = np.linalg.inv(Winv)
+    d = np.sqrt(np.linalg.det(W))
+    e1 = (W[:,0,0] - W[:,1,1])/( W[:,0,0] + W[:,1,1] + 2*d)
+    e2 = 2 * W[:,0,1]/( W[:,0,0] + W[:,1,1] + 2*d)
+    return e1, e2
 
 def project_to_sky(data):
     r = np.sqrt(data['x']*data['x'] + data['y']*data['y'] + data['z']*data['z'])
