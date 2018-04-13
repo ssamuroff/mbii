@@ -4,10 +4,10 @@ import numpy as np
 import argparse
 import yaml
 import mbii.lego_tools as util
-from mbii.pipeline.twopoint.jackknife import ed as errors 
+from mbii.pipeline.twopoint.jackknife import gg as errors 
 
 def compute(options):
-	print 'Position data : %s'%options['output']
+	print 'Position data : %s'%options['2pt']['shapes']
 	data = fi.FITS(options['2pt']['shapes'])[-1].read()
 
 	splitflag=options['2pt']['split']
@@ -45,7 +45,7 @@ def compute(options):
 	else:
 		dc1c1 = np.zeros(c1c1.xi.size)
 
-	util.export_treecorr_output('%s/gg_corr_11%s.txt'%(options['2pt']['savedir'], suffix), c1c1, dc1c1)
+	export_treecorr_output('%s/gg_corr_11%s.txt'%(options['2pt']['savedir'], suffix), c1c1, dc1c1)
 
 	if splitflag:
 		print '22'
@@ -69,9 +69,9 @@ def compute(options):
 			dc1c2 = np.zeros(c1c2.xi.size)
 			dc2c1 = np.zeros(c2c1.xi.size)
 
-		util.export_treecorr_output('%s/gg_corr_22%s.txt'%(options['2pt']['savedir'], suffix), c2c2, dc2c2)
-		util.export_treecorr_output('%s/gg_corr_12%s.txt'%(options['2pt']['savedir'], suffix), c1c2, dc1c2)
-		util.export_treecorr_output('%s/gg_corr_21%s.txt'%(options['2pt']['savedir'], suffix), c2c1, dc2c1)
+		export_treecorr_output('%s/gg_corr_22%s.txt'%(options['2pt']['savedir'], suffix), c2c2, dc2c2)
+		export_treecorr_output('%s/gg_corr_12%s.txt'%(options['2pt']['savedir'], suffix), c1c2, dc1c2)
+		export_treecorr_output('%s/gg_corr_21%s.txt'%(options['2pt']['savedir'], suffix), c2c1, dc2c1)
 
 	cat0 = treecorr.Catalog(x=data['x'], y=data['y'], z=data['z'])
 	c0c0 = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=options['2pt']['nbin'])
@@ -86,7 +86,7 @@ def compute(options):
 	else:
 		dc0c0 = np.zeros(c0c0.xi.size)
 
-	util.export_treecorr_output('%s/gg_corr_00%s.txt'%(options['2pt']['savedir'], suffix), c0c0, dc0c0)
+	export_treecorr_output('%s/gg_corr_00%s.txt'%(options['2pt']['savedir'], suffix), c0c0, dc0c0)
 		
 
 	print 'Done'
@@ -128,3 +128,12 @@ def finish_nn(corr, cat1, cat2, rcat1, rcat2, options):
 	return corr
 
 
+
+def export_treecorr_output(filename,corr,errors):
+    R = np.exp(corr.logr)
+
+    xi = corr.xi
+
+    out = np.vstack((R,xi,corr.weight, errors))
+    print 'Saving %s'%filename
+    np.savetxt(filename, out.T)
