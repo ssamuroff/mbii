@@ -23,4 +23,5 @@ else:
 options = yaml.load(open(args.config))
 
 data = fi.FITS(options['symmetrisation']['catalogue'])[-1].read()
-utils.symmetrise_catalogue3(data, filename=options['symmetrisation']['catalogue'], savedir=options['symmetrisation']['output'], mask=None, rank=rank, size=size)
+
+utils.symmetrise_catalogue3(data, seed=options['random_seed'], filename=options['symmetrisation']['catalogue'], savedir=options['symmetrisation']['output'], mask=None, rank=rank, size=size)
