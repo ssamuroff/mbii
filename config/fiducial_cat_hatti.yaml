@@ -1,6 +1,6 @@
 cuts :
-    npart_dm : 300 1e60
-    npart_baryon : 1000 1e60
+    npart_dm : 1000 1e60
+    npart_baryon : 300 1e60
     x : 0. 100000.
     y : 0. 100000.
     z : 0. 100000.
@@ -12,27 +12,28 @@ snapshot : 85
 
 baryon_shapes : /Users/hattifattener/Documents/ias/mbii/subhalo_cat-nthreshold5-proj+3d.fits
 dm_shapes : /Users/hattifattener/Documents/ias/mbii/subhalo_cat-nthreshold5-proj+3d.fits
-output : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v5-ndm1000-nst300.fits
+output : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v9-ndm1000-nst300.fits
 
 symmetrisation:
-    catalogue : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v5-ndm1000-nst300.fits
-    output : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v5-ndm1000-nst300-symmetrised_pos.fits
+    catalogue : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v9-ndm1000-nst300.fits
+    output : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v9-ndm1000-nst300-symmetrised.fits
 
 errors:
     nsub : 3
 
 
 2pt:
-    ctypes : giplus_proj giplus_3d ed gg
+    ctypes : ed ee gg giplus_proj giplus_3d 
     errors: True
-    shapes : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v5-ndm1000-nst300.fits
-    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/
-    split : central
+    shapes : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v9-ndm1000-nst300.fits
+    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/v9/
+    split : most_massive
     split_val : 1
+    binning : log
     rmin : 0.1
-    rmax : 30.
+    rmax : 33.
     nbin : 6
     rpmin : 0.1
-    rpmax : 30.0
+    rpmax : 30.
     nrpbin : 6
     pi_max : 0.2

@@ -40,8 +40,8 @@ def jackknife(data1, data2, options, verbosity=0):
 				if verbosity>0:
 					print data1['x'][mask1].mean()
 
-				cat1 = treecorr.Catalog(x=data1['x'][mask1], y=data1['y'][mask1], z=data1['z'][mask1], a=data1['a1'][mask1], b=data1['a2'][mask1], c=data1['a3'][mask1])
-				cat2 = treecorr.Catalog(x=data2['x'][mask2], y=data2['y'][mask2], z=data2['z'][mask2], a=data2['a1'][mask2], b=data2['a2'][mask2], c=data2['a3'][mask2])
+				cat1 = treecorr.Catalog(x=data1['x'][mask1], y=data1['y'][mask1], z=data1['z'][mask1])
+				cat2 = treecorr.Catalog(x=data2['x'][mask2], y=data2['y'][mask2], z=data2['z'][mask2])
 				gg = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=options['2pt']['nbin'])
 
 				gg.process(cat1,cat2)
@@ -57,6 +57,7 @@ def jackknife(data1, data2, options, verbosity=0):
 
 	if verbosity>0:
 		print 'Done subsampling.'
+
 	return np.array(vec).std(axis=0)
 
 def randoms(cat1, cat2, xbounds=(0,100), ybounds=(0,100), zbounds=(0,100)):

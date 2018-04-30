@@ -17,17 +17,114 @@ from numpy.core.records import fromarrays
 
 
 
-def equalise_binning(data1, data2, rmin, rmax, nbin):
+<<<<<<< HEAD
+def equalise_binning(data1, data2, rmin, rmax, nbin, tol=1000.):
     """Iteratively shift the bin edges and redo the pair counting until the bins
     contain equal numbers of pairs."""
 
+    from halotools.mock_observables.pair_counters import npairs_3d
+
     rbins = np.logspace(np.log10(rmin), np.log10(rmax), nbin)
-    counts = npairs_3d(sample1, sample2, rbins,
+    upper = rbins[1:]
+    lower = rbins[:-1]
+
+    positions1 = np.vstack((data1['x'],data1['y'],data1['z'])).T
+    positions2 = np.vstack((data2['x'],data2['y'],data2['z'])).T
+    counts = npairs_3d(positions1, positions2, rbins,
                        verbose=False, num_threads=1,
                        approx_cell1_size=None,
                        approx_cell2_size=None)
 
-    import pdb ; pdb.set_trace()
+    nmax = counts.max()
+    nmin = counts.min()
+    R = nmax*1./nmin
+    iiter=0
+
+    while R>tol:
+        rnew=[]
+        imax=np.argwhere(counts==counts.max())[0,0]
+        imin=np.argwhere(counts==counts.min())[0,0]
+        for j,r in enumerate(rbins):
+            if j-1==imax-1:
+                r0 = np.sqrt(rbins[j-1]*rbins[j])
+                rnew += [r0,r]
+            elif j-1==imin:
+                continue
+            else:
+                rnew.append(r)
+
+        counts = npairs_3d(positions1, positions2, rnew,
+                    verbose=False, num_threads=1,
+                    approx_cell1_size=None,
+                    approx_cell2_size=None)
+
+        nmax = counts.max()
+        nmin = counts.min()
+        R = nmax*1./nmin
+        iiter+=1
+        rbins = rnew
+        print 'Done iteration ', iiter, R
+
+    return np.array(rbins)
+    
+
+def find_equal_bin_edges(x,nbins,w=None):
+    """
+    For an array x, returns the boundaries of nbins equal (possibly weighted by w) bins.
+    """
+
+    if w is None:
+      xs=np.sort(x)
+      r=np.linspace(0.,1.,nbins+1.)*(len(x)-1)
+      return xs[r.astype(int)]
+
+    fail=False
+    ww=np.sum(w)/nbins
+    i=np.argsort(x)
+    k=np.linspace(0.,1.,nbins+1.)*(len(x)-1)
+    k=k.astype(int)
+    r=np.zeros((nbins+1))
+    ist=0
+    for j in xrange(1,nbins):
+      # print k[j],r[j-1]
+      if k[j]<r[j-1]:
+        print 'Random weight approx. failed - attempting brute force approach'
+        fail=True
+        break
+      w0=np.sum(w[i[ist:k[j]]])
+      if w0<=ww:
+        for l in xrange(k[j],len(x)):
+          w0+=w[i[l]]
+          if w0>ww:
+            r[j]=x[i[l]]
+            ist=l
+            break
+      else:
+        for l in xrange(k[j],0,-1):
+          w0-=w[i[l]]
+          if w0<ww:
+            r[j]=x[i[l]]
+            ist=l
+            break
+
+    if fail:
+
+      ist=np.zeros((nbins+1))
+      ist[0]=0
+      for j in xrange(1,nbins):
+        wsum=0.
+        for k in xrange(ist[j-1].astype(int),len(x)):
+          wsum+=w[i[k]]
+          if wsum>ww:
+            r[j]=x[i[k-1]]
+            ist[j]=k
+            break
+
+    r[0]=x[i[0]]
+    r[-1]=x[i[-1]]
+
+    return equal_r
+
     
 
 def find_equal_bin_edges(x,nbins,w=None):
@@ -1089,16 +1186,16 @@ def nfw(r,c,a):
 
 
 def convert_to_halotools(data, snapshot=85, read_mass=False):
-	z = snapshots[snapshot]
-	names = data.dtype.names
-	if ('mass' in names) and read_mass:
-		mass = data['mass']
-	else:
-		mass =0
+    z = snapshots[snapshot]
+    names = data.dtype.names
+    if ('mass' in names) and read_mass:
+        mass = data['mass']
+    else:
+        mass =0
 
-	catalogue = ht.sim_manager.UserSuppliedPtclCatalog(redshift=z, Lbox=100, particle_mass=mass, x=data['x']/1e3, y=data['y']/1e3, z=data['z']/1e3, ptcl_ids=data['subfindId'])
+    catalogue = ht.sim_manager.UserSuppliedPtclCatalog(redshift=z, Lbox=100, particle_mass=mass, x=data['x']/1e3, y=data['y']/1e3, z=data['z']/1e3, ptcl_ids=data['subfindId'])
 
-	return catalogue
+    return catalogue
 
 
 def parse_mask(mask,array):

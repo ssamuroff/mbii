@@ -12,25 +12,26 @@ snapshot : 85
 
 baryon_shapes : /Users/hattifattener/Documents/ias/mbii/subhalo_cat-nthreshold5-proj+3d.fits
 dm_shapes : /Users/hattifattener/Documents/ias/mbii/subhalo_cat-nthreshold5-proj+3d.fits
-output : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v5-ndm1000-nst300.fits
+output : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v9-ndm1000-nst300.fits
 
 symmetrisation:
-    catalogue : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v5-ndm1000-nst300.fits
-    output : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v5-ndm1000-nst300-symmetrised.fits
+    catalogue : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v9-ndm1000-nst300.fits
+    output : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v9-ndm1000-nst300-symmetrised-testing0.fits
 
 errors:
     nsub : 3
 
 
 2pt:
-    ctypes : giplus_proj giplus_3d
+    ctypes : ed ee gg giplus_proj giplus_3d
     errors: True
-    shapes : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v5-ndm1000-nst300-symmetrised.fits
-    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/symmetrised_pos
-    split : central
+    shapes : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v9-ndm1000-nst300-symmetrised-testing0.fits
+    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/v9/symmetrised
+    split : most_massive
     split_val : 1
+    binning : log
     rmin : 0.1
-    rmax : 30.
+    rmax : 33.
     nbin : 6
     rpmin : 0.1
     rpmax : 30.
