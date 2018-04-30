@@ -21,10 +21,14 @@ dt = [
       ('a1', float), ('a2', float), ('a3', float), # Normalised 3 vector along the major axis 
       ('b1', float), ('b2', float), ('b3', float),
       ('c1', float), ('c2', float), ('c3', float), # Normalised 3 vector along the major axis 
+      ('lambda_a', float), ('lambda_b', float), ('lambda_c', float), # Eigenvalues of the 3D inertia tensor
+      ('lambda_a_proj', float), ('lambda_b_proj', float), # Eigenvalues of the 2D inertia tensor 
       ('e1_dm', float), ('e2_dm', float), # Projected ellipticities, defined by the dark matter distribution
       ('a1_dm', float), ('a2_dm', float), ('a3_dm', float), # Normalised 3 vector along the major axis, defined by the dark matter distribution 
       ('b1_dm', float), ('b2_dm', float), ('b3_dm', float),
       ('c1_dm', float), ('c2_dm', float), ('c3_dm', float), # Normalised 3 vector along the major axis , defined by the dark matter distribution
+      ('lambda_a_dm', float), ('lambda_b_dm', float), ('lambda_c_dm', float), # Eigenvalues of the 3D matter inertia tensor
+      ('lambda_a_proj_dm', float), ('lambda_b_proj_dm', float), # Eigenvalues of the 2D matter inertia tensor 
       ('x', float), ('y', float), ('z', float), # 3D position in Cartesian coordinates, in Mpc h^-1
       ('vrot', float), # Rotational velocity about the subhalo centre
       ('sigma', float), # Velocity dispersion  
@@ -371,6 +375,18 @@ cat.array['b3_dm'] = dm['b3'][mask]
 cat.array['c1_dm'] = dm['a1'][mask]
 cat.array['c2_dm'] = dm['a2'][mask]
 cat.array['c3_dm'] = dm['a3'][mask]
+
+
+# Also copy over the information about the relative axis lengths
+# of the visible and dark matter parts of each galaxy  
+for (abc, num) in zip(['a','b','c'], [3,2,1]):
+	cat.array['lambda_%c'%abc] = baryons['lambda%d'%num][mask]
+	cat.array['lambda_%c_dm'%abc] = dm['lambda%d'%num][mask]
+
+for (ab, num) in zip(['a','b'], [1,2]):
+	cat.array['lambda_%c_proj'%ab] = baryons['lambda%d_2d'%num][mask]
+	cat.array['lambda_%c_proj_dm'%ab] = dm['lambda%d_2d'%num][mask]
+
 
 # Now calculate the projected ellipticities
 phi = np.arctan2(baryons['a2_2d'][mask], baryons['a1_2d'][mask])

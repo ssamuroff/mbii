@@ -1,8 +1,8 @@
 import numpy as np
-import treecorr
+import yaml
 import fitsio as fi
-import sys, yaml
-import mbii.lego_tools as utils
+#import mbii.lego_tools as utils
+import mbii.symmetrise_lib as lib
 import argparse
 
 
@@ -24,4 +24,4 @@ options = yaml.load(open(args.config))
 
 data = fi.FITS(options['symmetrisation']['catalogue'])[-1].read()
 
-utils.symmetrise_catalogue3(data, seed=options['random_seed'], filename=options['symmetrisation']['catalogue'], savedir=options['symmetrisation']['output'], mask=None, rank=rank, size=size)
+lib.symmetrise_catalogue3(data, seed=options['random_seed'], filename=options['symmetrisation']['catalogue'], savedir=options['symmetrisation']['output'], mask=None, rank=rank, size=size)

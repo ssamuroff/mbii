@@ -39,4 +39,4 @@ elif args.type=='reduced_inertia_tensor_projected':
 elif args.type=='reduced_inertia_tensor':
     prop.compute_inertia_tensors(snap, reduced=True)
 elif args.type=='spin':
-    prop.compute_spin(snap, component='dm', nsubhalo=20000)
+    prop.compute_spin(snap, component='baryons')

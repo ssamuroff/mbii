@@ -37,10 +37,10 @@ plt.plot(np.exp(star_basic.logr)/1e3, star_basic.xi,color='purple', ls=':', labe
 plt.axhline(0,color='k')
 plt.legend(loc='upper right')
 
-#plt.ylim(-0.03,0.09)
+plt.ylim(1e-3,1)
 plt.xscale('log')
 plt.yscale('log')
 plt.ylabel('$\eta_e (r)$', fontsize=18)
 plt.xlabel('Comoving Separation $r$ / $h^{-1}$ Mpc', fontsize=18)
 plt.subplots_adjust(left=0.16,top=0.98,bottom=0.16, right=0.98)
-plt.savefig('/home/ssamurof/etae_redit_vs_it-log.png')
+plt.savefig('/home/ssamurof/etae_redit_vs_it-log-v0.png')
