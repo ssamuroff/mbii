@@ -240,7 +240,7 @@ def get_wrapped_positions(g, data, use_database=True):
 
     return data, positions, (x0,y0,z0)
 
-def build_rotation_matrix():
+def build_rotation_matrix(theta=None, phi=None, alpha=None):
     """Generates a random rotation matrix, 
     which transforms a given 3D position vector to a random position on the sphere.
     Usage : rotated = R.unrotated"""
@@ -248,8 +248,10 @@ def build_rotation_matrix():
     u2 = np.random.rand()
 
     # Use two random values from a uniform distribution to generate an axis about which to rotate
-    theta = np.arccos(2*u1-1)
-    phi = 2 * np.pi * u2
+    if phi==None:
+        phi = np.arccos(2*u1-1)
+    if theta==None:
+        theta = 2 * np.pi * u2
 
     # Work out a Cartesian unit vector defined by the rotation axis 
     x = np.sin(theta)*np.cos(phi)
@@ -259,7 +261,8 @@ def build_rotation_matrix():
     vec/=utils.get_norm(vec)
 
     # Now generate a random rotation angle about that axis
-    alpha = np.random.rand() * 2 * np.pi
+    if alpha==None:
+        alpha = np.random.rand() * 2 * np.pi
     cosa = np.cos(alpha)
     sina = np.sin(alpha)
     ux = vec[0]
