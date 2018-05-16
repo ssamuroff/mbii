@@ -249,7 +249,7 @@ def symmetrise_halo5(data, verbose=True, g=None):
         Rxyz = build_rotation_matrix(alpha=rotation_angle, vec=rotation_axis)
 
         if verbose:
-            print 'New position (x, y, z) : %3.3f, %3.3f %3.3f'%(rot[0],rot[1],rot[2])
+            print 'New position (x, y, z) : %3.3f, %3.3f %3.3f'%(rot['x'][i],rot['y'][i],rot['z'][i])
 
         # Apply the same rotation to the three orientation vectors
         a3d = np.array([data['a1'][i], data['a2'][i], data['a3'][i]])
