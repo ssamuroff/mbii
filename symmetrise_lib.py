@@ -239,6 +239,7 @@ def symmetrise_halo5(data, verbose=True, g=None):
 
         # Choose a random point on a sphere about the centroid of radius R
         rotated = sample_sphere(1, norm=R)
+        rotated = np.array([rotated[0][0], rotated[1][0], rotated[2][0]])
         rot['x'] = rotated[0]
         rot['y'] = rotated[1]
         rot['z'] = rotated[2]
