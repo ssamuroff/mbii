@@ -16,8 +16,29 @@ import treecorr
 from numpy.core.records import fromarrays
 
 
+def plot_spheres(cat, cat0=[], centres=True, painting_by_numbers=True):
+    from mpl_toolkits.mplot3d import Axes3D
+    import matplotlib.pyplot as plt
 
-<<<<<<< HEAD
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    mask = cat['most_massive']==0
+    if not painting_by_numbers:
+        ax.plot(cat['x'][mask], cat['y'][mask], cat['z'][mask], '.', color='purple', alpha=0.5)
+    else:
+        colours = ['purple','plum', 'k', 'orange', 'royalblue', 'steelblue', 'forestgreen', 'pink', 'hotpink', 'orchid', 'gray']*100
+        for i,col in zip(np.unique(cat['halo_id']),colours):
+            msk = (cat['halo_id']==i)
+            ax.plot(cat['x'][mask & msk], cat['y'][mask & msk], cat['z'][mask & msk], '.', markersize=4,color=col, alpha=0.5)
+
+    if centres:
+        ax.plot(cat['x'][np.invert(mask)], cat['y'][np.invert(mask)], cat['z'][np.invert(mask)], 'x', color='pink')
+
+    if len(cat0)>0:
+        ax.plot(cat0['x'][mask], cat0['y'][mask], cat0['z'][mask], '*', color='hotpink')
+
+    plt.savefig('/home/ssamurof/spherical.png')
+
 def equalise_binning(data1, data2, rmin, rmax, nbin, tol=1000.):
     """Iteratively shift the bin edges and redo the pair counting until the bins
     contain equal numbers of pairs."""
