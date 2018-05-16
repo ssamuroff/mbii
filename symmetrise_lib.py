@@ -68,7 +68,7 @@ def symmetrise_catalogue3(data=None, seed=4000, mask=None,filename='/home/ssamur
             continue
 
         # Now apply the symmetrisation operation to these galaxies
-        symmetrised_halo = symmetrise_halo4(data[select], verbose=True, g=g)
+        symmetrised_halo = symmetrise_halo5(data[select], verbose=True, g=g)
 
         if verbose:
             print g, ngal
@@ -190,6 +190,109 @@ def symmetrise_halo4(data, verbose=True, g=None):
         
     return rot
 
+
+def symmetrise_halo5(data, verbose=True, g=None):
+    """
+    Takes an array of objects associated with a particular halo,
+    queries the database on coma to find the halo centroid positions
+    and then applies a random rotation to each.
+    The output is an array in the same format as given, but with
+    new positions and shapes."""
+
+    N = data['npart_baryon']
+    n = data.size
+
+    # Work out the centroid about which to rotate  
+    data, positions, (x0, y0, z0) = get_wrapped_positions(g, data) 
+    cent = np.array([x0,y0,z0])
+
+    # New array to store the output
+    rot = np.zeros(data.size, dtype=data.dtype)  
+    for name in data.dtype.names:
+        rot[name][:n] = data[name]
+
+    rot = utils.add_col(rot, 'x0', np.array([x0]*data.size), dtype=float)
+    rot = utils.add_col(rot, 'y0', np.array([y0]*data.size), dtype=float)
+    rot = utils.add_col(rot, 'z0', np.array([z0]*data.size), dtype=float)
+
+    # Start the inner loop, over individual galaxies. Sorry.
+    for i in xrange(n):
+
+        # Cartesian galaxy position, relative to the halo centre
+        pos = positions.T[i]
+
+        # Galaxy position in spherical polar coordinates
+        R = np.sqrt(sum(pos*pos))
+        phi = np.arccos(pos[2]/R) * pos[0]/abs(pos[0])
+        theta = np.arcsin(pos[1]/R/np.sin(phi))
+        rot['rh'][i] = R
+
+        # We can skip the rest for central objects
+        if (data['most_massive'][i]==1):
+            rot = check_wrapping(i, rot)
+            if verbose:
+                print 'skipping object -- it is classified as a central galaxy'
+            continue
+
+        if verbose:
+            print i,
+
+        # Choose a random point on a sphere about the centroid of radius R
+        rotated = sample_sphere(1, norm=R)
+        rot['x'] = rotated[0]
+        rot['y'] = rotated[1]
+        rot['z'] = rotated[2]
+
+        # Then work backwards to get the rotation matrix needed to transform the initial position to the rotated one
+        rotation_axis, rotation_angle = infer_rotation_angle(pos,rotated)
+        Rxyz = build_rotation_matrix(alpha=rotation_angle, vec=rotation_axis)
+
+        if verbose:
+            print 'New position (x, y, z) : %3.3f, %3.3f %3.3f'%(rot[0],rot[1],rot[2])
+
+        # Apply the same rotation to the three orientation vectors
+        a3d = np.array([data['a1'][i], data['a2'][i], data['a3'][i]])
+        b3d = np.array([data['b1'][i], data['b2'][i], data['b3'][i]])
+        c3d = np.array([data['c1'][i], data['c2'][i], data['c3'][i]])
+        arot = np.dot(Rxyz,a3d)
+        brot = np.dot(Rxyz,b3d)
+        crot = np.dot(Rxyz,c3d)
+        axes = {'a':arot,'b':brot,'c':crot}
+
+        # And for the dark matter component
+        a3d_dm = np.array([data['a1_dm'][i], data['a2_dm'][i], data['a3_dm'][i]])
+        b3d_dm = np.array([data['b1_dm'][i], data['b2_dm'][i], data['b3_dm'][i]])
+        c3d_dm = np.array([data['c1_dm'][i], data['c2_dm'][i], data['c3_dm'][i]])
+        arot_dm = np.dot(Rxyz,a3d_dm)
+        brot_dm = np.dot(Rxyz,b3d_dm)
+        crot_dm = np.dot(Rxyz,c3d_dm)
+        axes_dm = {'a':arot_dm,'b':brot_dm,'c':crot_dm}
+
+        # Stays the same
+        rot['npart_baryon'][i] = data['npart_baryon'][i]
+
+        # We also need to shift a few objects near the edges, which the rotation leaves outside the simulation box,
+        # back to the other side of the universe 
+        if verbose: 
+            print 'Rotation leaves %d object(s) outside the simulation box.'%(rot['x'][(rot['x']<0) | (rot['y']<0) | (rot['z']<0)].size)
+
+        rot = check_wrapping(i, rot)
+
+        if rot['x'][i]<0 : import pdb ; pdb.set_trace()
+
+        # Store everything in the appropriate place
+        for j in xrange(3):
+            for axis in ['a','b','c']:
+                rot['%c%d'%(axis,j+1)][i] =  axes[axis][j]
+                rot['%c%d_dm'%(axis,j+1)][i] =  axes_dm[axis][j]
+
+        # Work out the projected 2D ellipticities for the stellar component
+        rot = project_ellipticities(i, rot, suffix='')
+        # Same for dark matter 
+        rot = project_ellipticities(i, rot, suffix='dm')
+        
+    return rot
+
 def project_ellipticities(i, rot, suffix=''):
 
 	if (suffix!=''):
@@ -240,7 +343,43 @@ def get_wrapped_positions(g, data, use_database=True):
 
     return data, positions, (x0,y0,z0)
 
-def build_rotation_matrix(theta=None, phi=None, alpha=None):
+def sample_sphere(npoints, norm=1, seed=9000):
+    """Generates random points on a sphere of radius R"""
+    np.random.seed(seed)
+    u1 = np.random.rand(npoints)
+    u2 = np.random.rand(npoints)
+
+    # Define a vector position
+    theta = np.arccos(2*u1-1)
+    phi = 2 * np.pi * u2
+
+    x = np.sin(theta)*np.cos(phi)
+    y = np.sin(theta)*np.sin(phi)
+    z = np.cos(theta)
+    vec= np.array([x,y,z])
+    vec *= norm
+
+    return vec
+
+def infer_rotation_angle(position0, position):
+    """Work out two rotation angles that will transform one given 
+    3D vector into another."""
+
+    # Work out the unit vector orthogonal to the plane defined by the two position vectors
+    rotation_axis = np.cross(position0, position)
+    rotation_axis /= utils.get_norm(rotation_axis)
+
+    # Then calculate the angle between the two position vectors in the 2D plane defined by them
+    alpha = np.arccos( np.dot(position/utils.get_norm(position), position0/utils.get_norm(position0)) )
+    cross = np.cross(position, position0);
+
+    #alpha = -alpha
+
+    return rotation_axis, alpha
+
+
+
+def build_rotation_matrix(theta=None, phi=None, alpha=None, vec=[]):
     """Generates a random rotation matrix, 
     which transforms a given 3D position vector to a random position on the sphere.
     Usage : rotated = R.unrotated"""
@@ -254,10 +393,11 @@ def build_rotation_matrix(theta=None, phi=None, alpha=None):
         theta = 2 * np.pi * u2
 
     # Work out a Cartesian unit vector defined by the rotation axis 
-    x = np.sin(theta)*np.cos(phi)
-    y = np.sin(theta)*np.sin(phi)
-    z = np.cos(theta)
-    vec= np.array([x,y,z])
+    if (len(vec)==0):
+        x = np.sin(theta)*np.cos(phi)
+        y = np.sin(theta)*np.sin(phi)
+        z = np.cos(theta)
+        vec= np.array([x,y,z])
     vec/=utils.get_norm(vec)
 
     # Now generate a random rotation angle about that axis
