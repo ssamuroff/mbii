@@ -238,7 +238,7 @@ def symmetrise_halo5(data, verbose=True, g=None):
             print i,
 
         # Choose a random point on a sphere about the centroid of radius R
-        rotated = sample_sphere(1, norm=R)
+        rotated = sample_sphere(1, norm=R, seed=None)
         rotated = np.array([rotated[0][0], rotated[1][0], rotated[2][0]])
         rot['x'][i] = rotated[0]+x0
         rot['y'][i] = rotated[1]+y0
@@ -255,18 +255,18 @@ def symmetrise_halo5(data, verbose=True, g=None):
         a3d = np.array([data['a1'][i], data['a2'][i], data['a3'][i]])
         b3d = np.array([data['b1'][i], data['b2'][i], data['b3'][i]])
         c3d = np.array([data['c1'][i], data['c2'][i], data['c3'][i]])
-        arot = np.dot(Rxyz,a3d)
-        brot = np.dot(Rxyz,b3d)
-        crot = np.dot(Rxyz,c3d)
+        arot = np.dot(Rxyz,a3d)*-1
+        brot = np.dot(Rxyz,b3d)*-1
+        crot = np.dot(Rxyz,c3d)*-1
         axes = {'a':arot,'b':brot,'c':crot}
 
         # And for the dark matter component
         a3d_dm = np.array([data['a1_dm'][i], data['a2_dm'][i], data['a3_dm'][i]])
         b3d_dm = np.array([data['b1_dm'][i], data['b2_dm'][i], data['b3_dm'][i]])
         c3d_dm = np.array([data['c1_dm'][i], data['c2_dm'][i], data['c3_dm'][i]])
-        arot_dm = np.dot(Rxyz,a3d_dm)
-        brot_dm = np.dot(Rxyz,b3d_dm)
-        crot_dm = np.dot(Rxyz,c3d_dm)
+        arot_dm = np.dot(Rxyz,a3d_dm)*-1
+        brot_dm = np.dot(Rxyz,b3d_dm)*-1
+        crot_dm = np.dot(Rxyz,c3d_dm)*-1
         axes_dm = {'a':arot_dm,'b':brot_dm,'c':crot_dm}
 
         # Stays the same
@@ -344,9 +344,10 @@ def get_wrapped_positions(g, data, use_database=True):
 
     return data, positions, (x0,y0,z0)
 
-def sample_sphere(npoints, norm=1, seed=9000):
+def sample_sphere(npoints, norm=1, seed=None):
     """Generates random points on a sphere of radius R"""
-    np.random.seed(seed)
+    if (seed!=None):
+        np.random.seed(seed)
     u1 = np.random.rand(npoints)
     u2 = np.random.rand(npoints)
 
