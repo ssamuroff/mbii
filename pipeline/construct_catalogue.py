@@ -53,18 +53,18 @@ class halo_wrapper:
 
 		# Setup the database connection and query for the centroids of all the halos
 		c = db.cursor()
-		sql = 'SELECT x,y,z,groupId,mass,len FROM subfind_halos WHERE snapnum=85;'
+		sql = 'SELECT x,y,z,groupId,mass,len,subfindId FROM subfind_halos WHERE snapnum=85;'
 		if verbosity>0:
 			print 'Submitting query...'
 		c.execute(sql)
-		self.info = fromarrays(np.array(c.fetchall()).squeeze().T,names='x,y,z,groupId,mass,len')
+		self.info = fromarrays(np.array(c.fetchall()).squeeze().T,names='x,y,z,groupId,mass,len,subfindId')
 
 		# Do the same for groups
-		sql = 'SELECT x,y,z,groupId FROM subfind_groups WHERE snapnum=85;'
+		sql = 'SELECT x,y,z,groupId,subfindId FROM subfind_groups WHERE snapnum=85;'
 		if verbosity>0:
 			print 'Submitting group query...'
 		c.execute(sql)
-		self.group_info = fromarrays(np.array(c.fetchall()).squeeze().T,names='x,y,z,groupId')
+		self.group_info = fromarrays(np.array(c.fetchall()).squeeze().T,names='x,y,z,groupId,subfindId')
 
 		# Convert to Mpc h^-1
 		for name in ['x', 'y', 'z']:
@@ -238,6 +238,9 @@ class catalogue:
 		R,ind = tree.query(xyz.T, k=1)
 
 		# Store the results in the same shape as the subhalo table
+		sub = np.zeros(cflag[select].shape)
+		sub[ind] = 1
+		cflag[select] = sub
 		cflag[ind]+=1
 
 		# Do the same thing, but the other way around
