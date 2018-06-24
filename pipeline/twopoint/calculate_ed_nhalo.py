@@ -4,8 +4,8 @@ import numpy as np
 import argparse
 import yaml
 #import mbii.lego_tools as util
-from halotools.mock_observables.alignments import ed_3d
-from mbii.pipeline.twopoint.jackknife import ed as errors
+from halotools.mock_observables.alignments import ed_3d_one_two_halo_decomp as ed_3d
+from mbii.pipeline.twopoint.jackknife import ed_nhalo as errors
 
 
 def compute(options):
@@ -14,26 +14,6 @@ def compute(options):
 	binning = options['2pt']['binning']
 
 	data = fi.FITS(options['2pt']['shapes'])[-1].read()
-	if 'npart_cut' in options['2pt'].keys():
-		nlow = options['2pt']['npart_cut']
-		print 'Imposing additional cut at npart>%d'%nlow
-		data = data[(data['npart_dm']>nlow)]
-	else:
-		nlow=-1
-
-	if 'npart_cut_upper' in options['2pt'].keys():
-		nhigh = options['2pt']['npart_cut_upper']
-		print 'Imposing additional cut at npart<%d'%nhigh
-		data = data[(data['npart_dm']<nhigh)]
-	else:
-		nhigh = -1
-	#print 'Excluding '
-	#dx = abs(data['x']-data['x0'])
-	#dy = abs(data['y']-data['y0'])
-	#dz = abs(data['z']-data['z0'])
-	#cflag = (data['most_massive']==1)
-	#mask = cflag & ((dx>50) | (dy>50) | (dz>50))
-	#data = data[np.invert(mask)]
 
 	splitflag=options['2pt']['split']
 
@@ -57,12 +37,12 @@ def compute(options):
 	print 'Computing correlation functions.'
 	print '11'
 	cat1 = data[mask]
-	c1c1 = compute_ed(cat1, cat1, options) 
+	c1c1_1h, c1c1_2h = compute_ed(cat1, cat1, options) 
 
 	if options['2pt']['errors']:
-		dc1c1 = errors.jackknife(data[mask], data[mask], options, rbins=rbins)
+		dc1c1_1h, dc1c1_2h = errors.jackknife(data[mask], data[mask], options, rbins=rbins)
 	else:
-		dc1c1 = np.zeros(c1c1.size)
+		dc1c1_1h, dc1c1_2h = np.zeros(c1c1.size), np.zeros(c1c1.size)
 
 	if splitflag:
 		cat2 = data[np.invert(mask)]
@@ -70,48 +50,49 @@ def compute(options):
 	else:
 		suffix=''
 
-	if (nlow>=0):
-		suffix+='-ndm_part_low%d'%nlow
-	if (nhigh>0):
-		suffix+='-ndm_part_high%d'%nhigh
-
-	export_array('%s/ED_corr_11%s.txt'%(options['2pt']['savedir'], suffix), rbins, c1c1, dc1c1)
-
 	if splitflag:
 		print '21'
-		c2c1 = compute_ed(cat2, cat1, options, rbins=rbins)
+		c2c1_1h, c2c1_2h = compute_ed(cat2, cat1, options, rbins=rbins)
 
 		print '22'
-		c2c2 = compute_ed(cat2, cat2, options, rbins=rbins)
+		c2c2_1h, c2c2_2h = compute_ed(cat2, cat2, options, rbins=rbins)
 	
 		print '12'
-		c1c2 = compute_ed(cat1, cat2, options, rbins=rbins)
+		c1c2_1h, c1c2_2h = compute_ed(cat1, cat2, options, rbins=rbins)
 		
 
 		if options['2pt']['errors']:
-			dc2c2 = errors.jackknife(cat2, cat2, options, rbins=rbins)
-			dc1c2 = errors.jackknife(cat1, cat2, options, rbins=rbins)
-			dc2c1 = errors.jackknife(cat2, cat1, options, rbins=rbins)
+			dc2c2_1h, dc2c2_2h = errors.jackknife(cat2, cat2, options, rbins=rbins)
+			dc1c2_1h, dc1c2_2h = errors.jackknife(cat1, cat2, options, rbins=rbins)
+			dc2c1_1h, dc2c1_2h = errors.jackknife(cat2, cat1, options, rbins=rbins)
 
 		else:
-			dc1c1 = np.zeros(c1c1.size)
-			dc2c2 = np.zeros(c2c2.size)
-			dc1c2 = np.zeros(c1c2.size)
-			dc2c1 = np.zeros(c2c1.size)
+			dc1c1_1h, dc1c1_2h = np.zeros(c1c1.size), np.zeros(c1c1.size)
+			dc2c2_1h, dc2c2_2h = np.zeros(c2c2.size), np.zeros(c2c2.size)
+			dc1c2_1h, dc1c2_2h = np.zeros(c1c2.size), np.zeros(c1c2.size)
+			dc2c1_1h, dc2c1_2h = np.zeros(c2c1.size), np.zeros(c2c1.size)
 
-		export_array('%s/ED_corr_22%s.txt'%(options['2pt']['savedir'], suffix), rbins, c2c2, dc2c2)
-		export_array('%s/ED_corr_12%s.txt'%(options['2pt']['savedir'], suffix), rbins, c1c2, dc1c2)
-		export_array('%s/ED_corr_21%s.txt'%(options['2pt']['savedir'], suffix), rbins, c2c1, dc2c1)
+		
+		export_array('%s/ED_corr_11%s_1h.txt'%(options['2pt']['savedir'], suffix), rbins, c1c1_1h, dc1c1_1h)
+		export_array('%s/ED_corr_22%s_1h.txt'%(options['2pt']['savedir'], suffix), rbins, c2c2_1h, dc2c2_1h)
+		export_array('%s/ED_corr_12%s_1h.txt'%(options['2pt']['savedir'], suffix), rbins, c1c2_1h, dc1c2_1h)
+		export_array('%s/ED_corr_21%s_1h.txt'%(options['2pt']['savedir'], suffix), rbins, c2c1_1h, dc2c1_1h)
 
-		print '00'
-		cat0 = data
-		c0c0 = compute_ed(cat0, cat0, options, rbins=rbins)
+		export_array('%s/ED_corr_11%s_2h.txt'%(options['2pt']['savedir'], suffix), rbins, c1c1_2h, dc1c1_2h)
+		export_array('%s/ED_corr_22%s_2h.txt'%(options['2pt']['savedir'], suffix), rbins, c2c2_2h, dc2c2_2h)
+		export_array('%s/ED_corr_12%s_2h.txt'%(options['2pt']['savedir'], suffix), rbins, c1c2_2h, dc1c2_2h)
+		export_array('%s/ED_corr_21%s_2h.txt'%(options['2pt']['savedir'], suffix), rbins, c2c1_2h, dc2c1_2h)
+
+	print '00'
+	cat0 = data
+	c0c0_1h, c0c0_2h = compute_ed(cat0, cat0, options, rbins=rbins)
 	
-		if options['2pt']['errors']:
-			dc0c0 = errors.jackknife(data, data, options, rbins=rbins)
-		else:
-			dc0c0 = np.zeros(c0c0.xi.size)
-		export_array('%s/ED_corr_00%s.txt'%(options['2pt']['savedir'], suffix), rbins, c0c0, dc0c0)
+	if options['2pt']['errors']:
+		dc0c0_1h, dc0c0_2h = errors.jackknife(data, data, options, rbins=rbins)
+	else:
+		dc0c0_1h, dc0c0_2h = np.zeros(c0c0.xi.size), np.zeros(c0c0.xi.size)
+	export_array('%s/ED_corr_00%s_1h.txt'%(options['2pt']['savedir'], suffix), rbins, c0c0_1h, dc0c0_1h)
+	export_array('%s/ED_corr_00%s_2h.txt'%(options['2pt']['savedir'], suffix), rbins, c0c0_2h, dc0c0_2h)
 		
 
 	print 'Done'
@@ -121,15 +102,17 @@ def compute_ed(cat1, cat2, options, period=100., rbins=None):
 	avec1 = np.vstack((cat1['a1'], cat1['a2'], cat1['a3'])).T
 	pvec1 = np.vstack((cat1['x'], cat1['y'], cat1['z'])).T
 	pvec2 = np.vstack((cat2['x'], cat2['y'], cat2['z'])).T
+	hids1 = cat1['halo_id']
+	hids2 = cat2['halo_id']
 
 	if options['2pt']['binning']=='log' and (rbins is None):
 		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), options['2pt']['nbin'])
 	elif options['2pt']['binning']=='equal' and (rbins is None):
 		rbins = util.equalise_binning(cat1,cat2,options['2pt']['rmin'], options['2pt']['rmax'], options['2pt']['nbin'])
 
-	ed = ed_3d(pvec2, avec2, pvec1, rbins, period=period, num_threads=1) 
+	ed_1h, ed_2h = ed_3d(pvec2, avec2, hids2, pvec1, hids1, rbins, period=period, num_threads=1) 
 
-	return ed
+	return ed_1h, ed_2h
 
 def export_array(path, edges, result, error):
 	x = np.sqrt(edges[:-1]*edges[1:])

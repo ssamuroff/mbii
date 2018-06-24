@@ -3,7 +3,7 @@ import treecorr
 import numpy as np 
 import argparse
 import yaml
-import mbii.lego_tools as util
+#import mbii.lego_tools as util
 from mbii.pipeline.twopoint.jackknife import gg as errors 
 
 def compute(options):
@@ -11,6 +11,19 @@ def compute(options):
 	data = fi.FITS(options['2pt']['shapes'])[-1].read()
 
 	splitflag=options['2pt']['split']
+	if 'npart_cut' in options['2pt'].keys():
+		nlow = options['2pt']['npart_cut']
+		print 'Imposing additional cut at npart>%d'%nlow
+		data = data[(data['npart_dm']>nlow)]
+	else:
+		nlow=-1
+
+	if 'npart_cut_upper' in options['2pt'].keys():
+		nhigh = options['2pt']['npart_cut_upper']
+		print 'Imposing additional cut at npart<%d'%nhigh
+		data = data[(data['npart_dm']<nhigh)]
+	else:
+		nhigh = -1
 
 	if splitflag is not None:
 		name = options['2pt']['split']
@@ -31,10 +44,18 @@ def compute(options):
 		c1c2 = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=options['2pt']['nbin'])
 		c2c1 = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=options['2pt']['nbin'])
 		suffix = '_splitby%s'%options['2pt']['split']
+
+		rcat11, rcat12, rcat21, rcat22 = randoms(cat1, cat2)
+
 	else:
+		rcat11, rcat12, rcat21, rcat22 = randoms(cat1, cat1)
 		suffix=''
 
-	rcat11, rcat12, rcat21, rcat22 = randoms(cat1, cat2)
+	if (nlow>=0):
+		suffix+='-ndm_part_low%d'%nlow
+	if (nhigh>0):
+		suffix+='-ndm_part_high%d'%nhigh
+	
 
 	print 'Computing correlation functions.'
 	print '11'
@@ -73,20 +94,20 @@ def compute(options):
 		export_treecorr_output('%s/gg_corr_12%s.txt'%(options['2pt']['savedir'], suffix), c1c2, dc1c2)
 		export_treecorr_output('%s/gg_corr_21%s.txt'%(options['2pt']['savedir'], suffix), c2c1, dc2c1)
 
-	cat0 = treecorr.Catalog(x=data['x'], y=data['y'], z=data['z'])
-	c0c0 = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=options['2pt']['nbin'])
+		cat0 = treecorr.Catalog(x=data['x'], y=data['y'], z=data['z'])
+		c0c0 = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=options['2pt']['nbin'])
 
-	rcat01, rcat02, rcat21, rcat22 = randoms(cat0, cat0)
+		rcat01, rcat02, rcat21, rcat22 = randoms(cat0, cat0)
 
-	print '00'
-	c0c0.process(cat0,cat0)
-	c0c0 = finish_nn(c0c0, cat0, cat0, rcat01, rcat02, options)
-	if options['2pt']['errors']:
-		dc0c0 = errors.jackknife(data, data, options)
-	else:
-		dc0c0 = np.zeros(c0c0.xi.size)
+		print '00'
+		c0c0.process(cat0,cat0)
+		c0c0 = finish_nn(c0c0, cat0, cat0, rcat01, rcat02, options)
+		if options['2pt']['errors']:
+			dc0c0 = errors.jackknife(data, data, options)
+		else:
+			dc0c0 = np.zeros(c0c0.xi.size)
 
-	export_treecorr_output('%s/gg_corr_00%s.txt'%(options['2pt']['savedir'], suffix), c0c0, dc0c0)
+		export_treecorr_output('%s/gg_corr_00%s.txt'%(options['2pt']['savedir'], suffix), c0c0, dc0c0)
 		
 
 	print 'Done'

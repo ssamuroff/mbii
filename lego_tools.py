@@ -15,7 +15,7 @@ import treecorr
 #import astropy.io.fits as pf
 from numpy.core.records import fromarrays
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+#from mpl_toolkits.mplot3d import Axes3D
 
 def visualise_3d(x,y,z):  
     fig = plt.figure()
