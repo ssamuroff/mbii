@@ -1,16 +1,17 @@
 
 random_seed : 99000
-root_folder : '/physics/yfeng1/mb2'
+root_folder : '/nfs/nas-0-1/vat/Illustris-1/snapdir_135/'
+simulation : illustris
 
 catalogues:
-    snapshot : 68
+    snapshot : 135
     shapes_method : inertia_tensor 
-    postprocessed : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v10-ndm300-nst300-snapshot68.fits
+    postprocessed : /physics2/ssamurof/massive_black_ii/cats/illustris-base_subhalo_shapes-v10-ndm1000-nst300-snapshot135.fits
 
     shapes_dir : /physics2/ssamurof/massive_black_ii/
 
     cuts :
-        npart_dm : 300 1e60
+        npart_dm : 1000 1e60
         npart_baryon : 300 1e60
         x : 0. 100000.
         y : 0. 100000.
@@ -19,8 +20,8 @@ catalogues:
     halo_matching : True
 
 symmetrisation:
-    catalogue : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v10-ndm300-nst300.fits
-    output : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v10-ndm300-nst300-symmetrised.fits
+    catalogue : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v10-ndm1000-nst300.fits
+    output : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v10-ndm1000-nst300-symmetrised.fits
     pivot_type : mass
     central_type : spatial_central
 

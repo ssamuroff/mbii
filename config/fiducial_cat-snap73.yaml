@@ -1,16 +1,17 @@
 
 random_seed : 99000
 root_folder : '/physics/yfeng1/mb2'
+simulation : massiveblackii
 
 catalogues:
-    snapshot : 68
+    snapshot : 73
     shapes_method : inertia_tensor 
-    postprocessed : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v10-ndm300-nst300-snapshot68.fits
+    postprocessed : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v10-ndm300-nst300-snapshot73.fits
 
     shapes_dir : /physics2/ssamurof/massive_black_ii/
 
     cuts :
-        npart_dm : 300 1e60
+        npart_dm : 1000 1e60
         npart_baryon : 300 1e60
         x : 0. 100000.
         y : 0. 100000.

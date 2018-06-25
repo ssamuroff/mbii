@@ -29,7 +29,7 @@ errors:
     savedir: /physics2/ssamurof/massive_black_ii/2pt/ns300_nd1000/v6/symmetrised
     split : most_massive
     split_val : 1
-    binning : equal
+    binning : log
     rmin : 0.1
     rmax : 50.
     nbin : 6
