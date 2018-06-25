@@ -10,6 +10,7 @@ Tools for accessing the MassiveBlack-II simulations and derived data products ho
 * halotools (https://github.com/duncandc/halotools/tree/alignments_devel)
 * yaml
 * astropy
+* numpy v1.14 (or higher; one line in the projection function needs np.stack. Sorry).
 
 ### Cosmology:
 
