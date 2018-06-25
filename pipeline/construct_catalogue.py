@@ -7,6 +7,7 @@ from mbii.readsubhalo import *
 from mbii.properties import *
 import pymysql as mdb
 import numpy as np
+import mbii.symmetrise_lib as lib
 from numpy.core.records import fromarrays
 
 
@@ -133,7 +134,7 @@ class catalogue:
 				print '%s < %s < %s'%(lower, name, upper)
 
 			if ('npart_dm' in name):
-				n = h['lenbytype'].T[0]
+				n = h['lenbytype'].T[1]
 				sel = (n>float(upper)) | (n<float(lower))
 				sel = sel | np.invert(np.isfinite(n))
 			elif ('npart_baryon' in name):
@@ -317,26 +318,32 @@ config = yaml.load(open(args.config))
 # This is a table of subhalo data that Ananth compiled at some point
 # Contains the basic positions (defined by the potential well), masses and particle numbers 
 root_folder='/physics/yfeng1/mb2'
-snapshot='0%d'%config['snapshot']
+snapshot='0%d'%config['catalogues']['snapshot']
 
 snap = SnapDir(snapshot, root_folder)
 h = snap.readsubhalo()
 
 
 # Read in the data
-if args.verbosity>0:
-	print 'Reading baryon information from ', config['catalogues']['baryon_shapes']
-baryons = fi.FITS(config['catalogues']['baryon_shapes'])['baryons'].read()
+if (config['catalogues']['shapes_method']=='reduced_inertia_tensor'):
+	shapes_filename = '%s/subhalo_cat_reduced-nthreshold%d-snapshot%d-proj+3d.fits'%(config['catalogues']['shapes_dir'], 5, int(snapshot))
+else:
+	shapes_filename = '%s/subhalo_cat-nthreshold%d-snapshot%d-proj+3d.fits'%(config['catalogues']['shapes_dir'], 5, int(snapshot))
+
 
 if args.verbosity>0:
-	print 'Reading dark matter information from ', config['catalogues']['dm_shapes']
-dm = fi.FITS(config['catalogues']['dm_shapes'])['dm'].read()
+	print 'Reading baryon information from ', shapes_filename
+baryons = fi.FITS(shapes_filename)['baryons'].read()
+
+if args.verbosity>0:
+	print 'Reading dark matter information from ', shapes_filename
+dm = fi.FITS(shapes_filename)['dm'].read()
 
 # Now create an array in which to store the required columns
 cat = catalogue()
 
 # Do the central/satellite flagging
-halos = halo_wrapper(config['snapshot'], verbosity=args.verbosity)
+halos = halo_wrapper(config['catalogues']['snapshot'], verbosity=args.verbosity)
 spatial_cflag, mass_cflag, R_pergal = cat.find_cs_flag(halos.group_info, h, dm, baryons)
 
 # Impose the selection cuts, as specified in the configuration file
@@ -400,12 +407,12 @@ for (ab, num) in zip(['a','b'], [1,2]):
 
 
 # Now calculate the projected ellipticities
-for j in xrange(cat.size):
-	cat = project_ellipticities(j, cat, suffix='')
+for j in xrange(cat.array.size):
+	cat.array = lib.project_ellipticities(j, cat.array, suffix='')
 
 # And the same for the projected DM shapes
-for j in xrange(cat.size):
-	cat = project_ellipticities(j, cat, suffix='dm')
+for j in xrange(cat.array.size):
+	cat.array = lib.project_ellipticities(j, cat.array, suffix='dm')
 
 # Now find the associated halo per galaxy
 # We'll need to read out this information from the database
@@ -427,7 +434,7 @@ cat.occupation_statistics()
 #cat.calculate_galaxy_offsets()
 
 # Now save the compiled subhalo data as a FITS file
-cat.export(config['catalogue']['postprocessed'])
+cat.export(config['catalogues']['postprocessed'])
 
 
 

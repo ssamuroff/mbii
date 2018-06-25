@@ -12,7 +12,8 @@ from readsubhalo import *
 import fitsio as fi
 
 def build_matrix(pos, reduced=False):
-	"""Construct a 3x3 inertia tensor of particles in a subhalo."""
+	"""Construct a 3x3 inertia tensor of particles in a subhalo.
+	Requires an array of particle positions relative to the subhalo centroid."""
 
 	# Normalisation factor
 	norm = 1.0 * len(pos[0])
@@ -68,14 +69,14 @@ def compute(i, k, x, subhalo_centroids, eigvalues, eigvalues_2d, eigvectors, eig
 
 	return eigvalues, eigvalues_2d, eigvectors, eigvectors_2d, length
 
-def export(inclusion_threshold, eigvalues, eigvalues_2d, eigvectors_2d, eigvectors, subhalo_centroids, length, reduced=False):
+def export(inclusion_threshold, eigvalues, eigvalues_2d, eigvectors_2d, eigvectors, subhalo_centroids, length, reduced=False, snapshot=85, dirname=''):
 	"""Sorry."""
 
 	# Decide on the filename
  	if reduced:
- 		filename = '/physics2/ssamurof/massive_black_ii/subhalo_cat_reduced-nthreshold%d-proj+3d.fits'%(inclusion_threshold)
+ 		filename = '%s/subhalo_cat_reduced-nthreshold%d-snapshot%d-proj+3d.fits'%(dirname, inclusion_threshold, snapshot)
  	else:
- 		filename = '/physics2/ssamurof/massive_black_ii/subhalo_cat-nthreshold%d-proj+3d.fits'%(inclusion_threshold)
+ 		filename = '%s/subhalo_cat-nthreshold%d-snapshot%d-proj+3d.fits'%(dirname, inclusion_threshold, snapshot)
 
  	print "Saving output to %s"%filename
  	out = fi.FITS(filename,'rw')
@@ -140,9 +141,41 @@ def export(inclusion_threshold, eigvalues, eigvalues_2d, eigvectors_2d, eigvecto
  	out.close()
 
 
-def compute_inertia_tensors(snap, reduced=False, inclusion_threshold=5):
- 	""" Compute the intertia tensors for all subhalos for
- 	the dark matter and stellar components and saves the output as a FITS file."""
+def read_subhalo_data(simulation, snapshot, root):
+	"""Read in the particle information from either MBII or Illustris.
+	   The formats of the data on disc are slightly different, and so
+	   some fiddling is needed to get the catalogues into something
+	   the shape code can use equivalently."""
+
+	if (simulation.lower()=='massiveblackii'):
+		from mbii.readsubhalo import *
+
+		snap = SnapDir('0%d'%snapshot, root)
+		h = snap.readsubhalo()
+
+		# Load the positions and masses of the constituent particles
+		print 'Loading dark matter particles'
+		x = snap.load(1, 'pos', h)
+		m = snap.load(1, 'mass', h)
+
+		print 'Loading star particles'
+		xb = snap.load(4, 'pos', h)
+		mb = snap.load(4, 'mass', h)
+
+	elif (simulation.lower()=='illustris'):
+		import illustris_python as il
+		subhalos = il.groupcat.loadSubhalos(root, snapshot)
+
+		h = 
+
+	else:
+		raise ValueError('Unknown simulation. Sorry.')
+
+	return h, x, m, xb, mb
+
+def compute_inertia_tensors(options, reduced=False, inclusion_threshold=5, snapshot=85, savedir=''):
+ 	""" Compute the intertia tensors for all subhalos. Do the calculation twice, for the
+ 	the dark matter and stellar component. Flatten the results and save as columns in a FITS file."""
  	print 'Using reduced (distance weighted) tensors', 'yes'*int(reduced), 'no'*int(np.invert(reduced) )
 
 	# This is horrible. Sorry. 
@@ -150,14 +183,12 @@ def compute_inertia_tensors(snap, reduced=False, inclusion_threshold=5):
 	# but digging into how the SubFind outputs are accessed requires a non-trivial amount of work.  
 
 	# Read the subhalo information
-	h = snap.readsubhalo()
-	# Load the positions and masses of the constituent particles
-	print 'Loading dark matter particles'
-	x = snap.load(1, 'pos', h)
-	m = snap.load(1, 'mass', h)
-	print 'Loading star particles'
-	xb = snap.load(4, 'pos', h)
-	mb = snap.load(4, 'mass', h)
+
+	simulation = options['simulation']
+	snapshot = options['catalogues']['snapshot']
+	root_folder = options['root_folder']
+	h, x, m, xb, mb = read_subhalo_data(simulation, snapshot)
+	
     
 	eigvectors = np.zeros((2, len(h), 3, 3))
 	eigvalues  = np.zeros((2, len(h), 3))
@@ -183,7 +214,7 @@ def compute_inertia_tensors(snap, reduced=False, inclusion_threshold=5):
 		else:
 			eigvalues, eigvalues_2d, eigvectors, eigvectors_2d, length = compute(i, 1, xb, subhalo_centroids, eigvalues, eigvalues_2d, eigvectors, eigvectors_2d, length, reduced=reduced)
 
-	export(inclusion_threshold, eigvalues, eigvalues_2d, eigvectors_2d, eigvectors, subhalo_centroids, length, reduced=reduced)
+	export(inclusion_threshold, eigvalues, eigvalues_2d, eigvectors_2d, eigvectors, subhalo_centroids, length, reduced=reduced, snapshot=snapshot, dirname=savedir)
 	print 'Done'
 
 	return
@@ -192,14 +223,7 @@ def compute_inertia_tensors(snap, reduced=False, inclusion_threshold=5):
 
 
 
-
-
-
-
-
-
-
-def compute_spin(snap, inclusion_threshold=1, component='baryons', nsubhalo=-1):
+def compute_spin(options, inclusion_threshold=1, component='baryons', nsubhalo=-1):
     """ Compute the angular momentum for all subhalos for
     the dark matter and stellar components and saves the output
     as a FITS file.

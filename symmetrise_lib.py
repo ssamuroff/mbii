@@ -8,7 +8,7 @@ import mbii.lego_tools as utils
 from numpy.core.records import fromarrays
 
 
-def symmetrise_catalogue3(data=None, seed=4000, mask=None,filename='/home/ssamurof/massive_black_ii/subhalo_cat-nthreshold5.fits', savedir=None, replace=False, verbose=True, nmin=0, rank=0, size=1):
+def symmetrise_catalogue3(data=None, seed=4000, mask=None, filename='/home/ssamurof/massive_black_ii/subhalo_cat-nthreshold5.fits', pivot='mass', central='spatial_central', savedir=None, replace=False, verbose=True, nmin=0, rank=0, size=1):
     """Takes a catalogue of subhalos with orientations, positions and host halo identifiers.
 	   Cycles through the objects and applies a random rotation about the halo centre to each,
 	   recalculating the position and shape vectors such that the relative orientation to
@@ -68,7 +68,7 @@ def symmetrise_catalogue3(data=None, seed=4000, mask=None,filename='/home/ssamur
             continue
 
         # Now apply the symmetrisation operation to these galaxies
-        symmetrised_halo = symmetrise_halo5(data[select], verbose=True, g=g)
+        symmetrised_halo = symmetrise_halo5(data[select], verbose=True, g=g, pivot=pivot, central=central)
 
         if verbose:
             print g, ngal
@@ -125,7 +125,7 @@ def symmetrise_halo4(data, verbose=True, g=None):
     	rot['rh'][i] = R
 
         # We can skip the rest for central objects
-        if (data['most_massive'][i]==1):
+        if (data[central_name][i]==1):
             rot = check_wrapping(i, rot)
             if verbose:
                 print 'skipping object -- it is classified as a central galaxy'
@@ -191,7 +191,7 @@ def symmetrise_halo4(data, verbose=True, g=None):
     return rot
 
 
-def symmetrise_halo5(data, verbose=True, g=None):
+def symmetrise_halo5(data, verbose=True, g=None, pivot='mass', central='spatial_central'):
     """
     Takes an array of objects associated with a particular halo,
     queries the database on coma to find the halo centroid positions
@@ -203,7 +203,7 @@ def symmetrise_halo5(data, verbose=True, g=None):
     n = data.size
 
     # Work out the centroid about which to rotate  
-    data, positions, (x0, y0, z0) = get_wrapped_positions(g, data) 
+    data, positions, (x0, y0, z0) = get_wrapped_positions(g, data, pivot=pivot) 
     cent = np.array([x0,y0,z0])
 
     # New array to store the output
@@ -228,7 +228,7 @@ def symmetrise_halo5(data, verbose=True, g=None):
         rot['rh'][i] = R
 
         # We can skip the rest for central objects
-        if (data['most_massive'][i]==1):
+        if (data[central][i]==1):
             rot = check_wrapping(i, rot)
             if verbose:
                 print 'skipping object -- it is classified as a central galaxy'
@@ -312,16 +312,33 @@ def project_ellipticities(i, rot, suffix=''):
 	return rot
 
 
-def get_wrapped_positions(g, data, use_database=True):
+def get_wrapped_positions(g, data, pivot='mass'):
     # Query the DB for the halo centre
-    if use_database:
+    if (pivot.lower()=='mass'):
     	info = find_centre(g)
-    else:
-    	info = np.zeros(1,dtype=['x','y','z'])
+    elif (pivot.lower()=='most_massive_galaxy'):
+    	info = np.zeros(1,dtype=[('x',float),('y',float),('z',float)])
     	mask = (data['most_massive']==1)
-    	info['x'] = data['x'][mask]
-    	info['y'] = data['y'][mask]
-    	info['z'] = data['z'][mask]
+        if len(data['x'][mask])==1:
+            info['x'] = data['x'][mask][0] * 1000
+            info['y'] = data['y'][mask][0] * 1000
+            info['z'] = data['z'][mask][0] * 1000
+        else:
+            print 'No central galaxy. Falling back on the centre of mass from the database'
+            info = find_centre(g)
+    elif (pivot.lower()=='most_central_galaxy'):
+        info = np.zeros(1,dtype=[('x',float),('y',float),('z',float)])
+        mask = (data['spatial_central']==1)
+        if len(data['x'][mask])==1:
+            info['x'] = data['x'][mask][0] * 1000
+            info['y'] = data['y'][mask][0] * 1000
+            info['z'] = data['z'][mask][0] * 1000
+        else:
+            print 'No central galaxy. Falling back on the centre of mass from the database'
+            info = find_centre(g)
+    else:
+        raise ValueError('Unknown pivot option:%s'%pivot)
+
     
     for comp in ['x','y','z']:
         if (data[comp]<5).max() and (data[comp]>95).max():
@@ -331,16 +348,24 @@ def get_wrapped_positions(g, data, use_database=True):
 
             # The 5 Mpc border is a bit arbitary, but it's probably safe to say any
             # halo with galaxies within both the uppermost and lowermost 5 Mpc is
-            # an artefact of the periodic boundary conditions    
+            # an artefact of the periodic boundary conditions   
             data[comp][data[comp]>95]-=100
+
 
         # This should handle the case where the centroid is on the opposite
         # side of the box to all of the galaxies surviving cuts 
-        if ( ((info[comp]/1000)>95) and (data[comp]<5).max() ) or ( ((info[comp]/1000)<5) and (data[comp]>95).max() ):
-                info[comp]-=100*1000
+        if ( ((info[comp]/1000)>95) and (data[comp]<5).max() ):
+            info[comp]-=100*1000
+        if ( ((info[comp]/1000)<5) and (data[comp]>95).max() ):
+            info[comp]+=100*1000
+
 
     x0,y0,z0 = info['x']/1000., info['y']/1000., info['z']/1000.
     positions = np.array([data['x']-x0, data['y']-y0, data['z']-z0])
+
+    x0 = np.atleast_1d(x0)[0]
+    y0 = np.atleast_1d(y0)[0]
+    z0 = np.atleast_1d(z0)[0]
 
     return data, positions, (x0,y0,z0)
 
