@@ -27,7 +27,7 @@ Omega_k = 0.0
 
 h = 0.701
 
-w0 = 0.0
+w0 = -1.0
 
 wa = 0.0
 
@@ -46,7 +46,9 @@ Assuming the paths in the config files are set correctly, mbii is in the PYTHONP
 
 #### 1. Build subhalo catalogues from particle data
 
-Missing. To do. (Well, the code exists in this repository but it needs putting into an understandable format).
+This step entails reading in the SubFind particle positions in each halo, working out the inertia tensors and saving the flattened results as columns in a FITS file.
+
+`python -m mbii.pipeline.calculate_shapes --config config/fiducial_cat.yaml`
 
 #### 2. Postprocess the catalogues 
 
