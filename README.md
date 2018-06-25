@@ -31,6 +31,16 @@ w0 = -1.0
 
 wa = 0.0
 
+### Snapshots
+
+68 : ?
+
+73 : ?
+
+79 : ?
+
+85 : z = 0.01
+
 ### Overview
 
 This is my attempt to create an end-to-end pipeline from simulation products (particles and group information) to galaxy catalogues and summary statistics.
