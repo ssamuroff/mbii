@@ -57,7 +57,7 @@ This is still a work in progress. We're currently still quite dependent on vario
 The data processing is handled by a series of calls to the scripts in mbii/pipeline.
 Adjustable features are set by yaml files (coma-specific examples can be found in mbii/config).
 
-Assuming the paths in the config files are set correctly, mbii is in the PYTHONPATH and there are no dependencies missing one should be able to do.
+Assuming the paths in the config files are set correctly, mbii is in the PYTHONPATH and there are no dependencies missing one should be able to do the following.
 
 #### 1. Build subhalo catalogues from particle data
 
