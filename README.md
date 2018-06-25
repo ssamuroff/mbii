@@ -94,10 +94,8 @@ catalogues:
     
     postprocessed : FITS file in which to store the output of step 2 above.
 
-    baryon_shapes : FITS file in which to store the output of step 1 above. This also provides the input to step 2.
-
-    dm_shapes : FITS file in which to store the output of step 1 above. This also provides the input to step 2.
-
+    shapes_dir : Directory to which to write the output of step 1 above. Also tells the code where to look for the inputs to step 2. 
+    
     cuts : column names, lower then upper bounds
 
     halo_matching : 
