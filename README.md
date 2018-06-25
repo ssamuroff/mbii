@@ -102,13 +102,13 @@ catalogues:
 
 symmetrisation:
 
-    catalogue : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v10-ndm300-nst300.fits
+    catalogue : Input unsymmetrised catalogue. Should be the path to a FITS file of the format ouput by step 2 above.
     
-    output : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v10-ndm300-nst300-symmetrised.fits
+    output : Path to a FITS file to which we want to write the symmetrised catalogue.
     
     pivot_type : Whether to rotate about the centre of mass or the centre-most galaxy, allowed : mass, galaxy
     
-    central_type : Flag used to define the central galaxy, allowd: spatial_central, most_massive
+    central_type : Flag used to define the central galaxy, allowed: spatial_central, most_massive
 
 errors :
    
