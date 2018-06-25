@@ -72,11 +72,35 @@ Reads in a galaxy catalogue in the format produced by step 2. Outputs the result
 
 ### Other config options
 
-cuts : column names, lower then upper bounds
+random_seed : fixed random seed to ensure consistent output on multiple runs, integer 
 
-snapshot : which redshift snaptshot to use. 85 is the lowest z~0.
+root_folder : Location of the SubFind particle data, on Coma it should be  '/physics/yfeng1/mb2'
 
-output : place to write the new postprocessed catalogue
+catalogues:
+
+    snapshot : which redshift snaptshot to use. 85 is the lowest z~0.
+
+    shapes_method : method used to compute galaxy shapes, allowed: inertia_tensor, reduced_inertia_tensor, spin
+    
+    postprocessed : FITS file in which to store the output of step 2 above.
+
+    baryon_shapes : FITS file in which to store the output of step 1 above. This also provides the input to step 2.
+
+    dm_shapes : FITS file in which to store the output of step 1 above. This also provides the input to step 2.
+
+    cuts : column names, lower then upper bounds
+
+    halo_matching : 
+
+symmetrisation:
+
+    catalogue : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v10-ndm300-nst300.fits
+    
+    output : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v10-ndm300-nst300-symmetrised.fits
+    
+    pivot_type : Whether to rotate about the centre of mass or the centre-most galaxy, allowed : mass, galaxy
+    
+    central_type : Flag used to define the central galaxy, allowd: spatial_central, most_massive
 
 errors :
    
