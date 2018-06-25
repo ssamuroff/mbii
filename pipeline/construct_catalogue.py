@@ -32,7 +32,7 @@ dt = [
       ('x', float), ('y', float), ('z', float), # 3D position in Cartesian coordinates, in Mpc h^-1
       ('vrot', float), # Rotational velocity about the subhalo centre
       ('sigma', float), # Velocity dispersion  
-      ('central', int), # Flag to indicate central galaxies
+      #('central', int), # Flag to indicate central galaxies
       ('rh', float), # Radial distance from the centre of the halo
       ('most_massive', int), # Binary flag, 1 if subhalo is has the highest DM mass in its group 
       ('spatial_central', float), # Bianry flag, 1 if subhalo is the closest to the potential minimum of the host halo 
@@ -53,14 +53,14 @@ class halo_wrapper:
 
 		# Setup the database connection and query for the centroids of all the halos
 		c = db.cursor()
-		sql = 'SELECT x,y,z,groupId,mass,len,subfindId FROM subfind_halos WHERE snapnum=85;'
+		sql = 'SELECT x,y,z,groupId,mass,len,subfindId FROM subfind_halos WHERE snapnum=%d;'%snapshot
 		if verbosity>0:
 			print 'Submitting query...'
 		c.execute(sql)
 		self.info = fromarrays(np.array(c.fetchall()).squeeze().T,names='x,y,z,groupId,mass,len,subfindId')
 
 		# Do the same for groups
-		sql = 'SELECT x,y,z,groupId,subfindId FROM subfind_groups WHERE snapnum=85;'
+		sql = 'SELECT x,y,z,groupId,subfindId FROM subfind_groups WHERE snapnum=%d;'%snapshot
 		if verbosity>0:
 			print 'Submitting group query...'
 		c.execute(sql)
@@ -171,6 +171,10 @@ class catalogue:
 		return
 
 	def tenneti_info(self, h, mask):
+		# Not using these any more, because Ananth's central flags are crap
+		# where
+		# crap == wrong
+		# (the flagging appears to have been done after mass cuts have been applied)
 		centralflag = np.fromfile('/home/rmandelb.proj/ananth/centralflag_085',dtype=np.uint32)
 
 		contam_mask = np.isfinite(h['pos'].T[1]) & (h['pos'].T[0]<100000) & (h['pos'].T[1]<100000) & (h['pos'].T[2]<100000)
@@ -237,11 +241,15 @@ class catalogue:
 		xyz = np.array([group_data['x'], group_data['y'], group_data['z']])
 		R,ind = tree.query(xyz.T, k=1)
 
+		# Remove any cases where the nearest galaxy is accociated with a different halo
+		# Without this we'll be misclassifying a fair number of satellites as the centrals 
+		# of neighbouring empty halos
+		empty_mask = (h['groupid'][select][ind]==group_data['groupId'])
+
 		# Store the results in the same shape as the subhalo table
 		sub = np.zeros(cflag[select].shape)
-		sub[ind] = 1
+		sub[ind[empty_mask]] = 1
 		cflag[select] = sub
-		cflag[ind]+=1
 
 		# Do the same thing, but the other way around
 		# to get a centroid-galaxy distance for each catalogue object
@@ -317,12 +325,12 @@ h = snap.readsubhalo()
 
 # Read in the data
 if args.verbosity>0:
-	print 'Reading baryon information from ', config['baryon_shapes']
-baryons = fi.FITS(config['baryon_shapes'])['baryons'].read()
+	print 'Reading baryon information from ', config['catalogues']['baryon_shapes']
+baryons = fi.FITS(config['catalogues']['baryon_shapes'])['baryons'].read()
 
 if args.verbosity>0:
-	print 'Reading dark matter information from ', config['dm_shapes']
-dm = fi.FITS(config['dm_shapes'])['dm'].read()
+	print 'Reading dark matter information from ', config['catalogues']['dm_shapes']
+dm = fi.FITS(config['catalogues']['dm_shapes'])['dm'].read()
 
 # Now create an array in which to store the required columns
 cat = catalogue()
@@ -332,7 +340,7 @@ halos = halo_wrapper(config['snapshot'], verbosity=args.verbosity)
 spatial_cflag, mass_cflag, R_pergal = cat.find_cs_flag(halos.group_info, h, dm, baryons)
 
 # Impose the selection cuts, as specified in the configuration file
-mask = cat.build_selection_mask(config['cuts'], baryons, dm, h, verbosity=args.verbosity)
+mask = cat.build_selection_mask(config['catalogues']['cuts'], baryons, dm, h, verbosity=args.verbosity)
 mask = mask & np.isfinite(h['pos'].T[0]) & np.isfinite(h['pos'].T[1]) & np.isfinite(h['pos'].T[2])
 
 cat.array = np.zeros(baryons[mask].size, dtype=dt)
@@ -392,25 +400,16 @@ for (ab, num) in zip(['a','b'], [1,2]):
 
 
 # Now calculate the projected ellipticities
-phi = np.arctan2(baryons['a2_2d'][mask], baryons['a1_2d'][mask])
-q = np.sqrt(baryons['lambda2_2d'][mask]/baryons['lambda1_2d'][mask])
-e = (q-1)/(q+1)
-e[np.invert(np.isfinite(e))] = 0.0
-cat.array['e1'] = e * np.cos(2*phi)
-cat.array['e2'] = e * np.sin(2*phi)
-
+for j in xrange(cat.size):
+	cat = project_ellipticities(j, cat, suffix='')
 
 # And the same for the projected DM shapes
-phi = np.arctan2(dm['a2_2d'][mask], dm['a1_2d'][mask])
-q = np.sqrt(dm['lambda2_2d'][mask]/dm['lambda1_2d'][mask])
-e = (q-1)/(q+1)
-e[np.invert(np.isfinite(e))] = 0.0
-cat.array['e1_dm'] = e * np.cos(2*phi)
-cat.array['e2_dm'] = e * np.sin(2*phi)
+for j in xrange(cat.size):
+	cat = project_ellipticities(j, cat, suffix='dm')
 
 # Now find the associated halo per galaxy
 # We'll need to read out this information from the database
-if config['include']['halo_matching']:
+if config['catalogues']['halo_matching']:
 	R, ind, info = halos.populate(cat.array)
 	cat.array['halo_id'] = info['groupId']
 
@@ -423,12 +422,12 @@ else:
 
 # Working out the halo occupation is slightly more fiddly
 cat.occupation_statistics()
-cat.tenneti_info(h, mask)
+#cat.tenneti_info(h, mask)
 	
 #cat.calculate_galaxy_offsets()
 
 # Now save the compiled subhalo data as a FITS file
-cat.export(config['output'])
+cat.export(config['catalogue']['postprocessed'])
 
-import pdb ; pdb.set_trace()
+
 
