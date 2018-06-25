@@ -35,7 +35,7 @@ snapshot = options['catalogues']['snapshot']
 
 #import pdb ; pdb.set_trace()
 
-snap = SnapDir(snapshot, root_folder)
+snap = SnapDir('0%d'%snapshot, root_folder)
 
 # We have a few possible permutations for the subhalo shapes here
 # (a) 2D or 3D shapes? It's the same method really, but the former involves cutting out a 2x2 corner of the 3x3 inertia tensor matrix.
@@ -43,12 +43,8 @@ snap = SnapDir(snapshot, root_folder)
 # (c) Inertia tensor or spin?
 
 if (options['catalogues']['shapes_method']=='inertia_tensor'):
-    lib.compute_inertia_tensors(snap, reduced=False)
-elif (options['catalogues']['shapes_method']=='inertia_tensor_projected'):
-    lib.compute_inertia_tensors_projected(snap, reduced=False)
-elif (options['catalogues']['shapes_method']=='reduced_inertia_tensor_projected'):
-    lib.compute_inertia_tensors_projected(snap, reduced=True)
+    lib.compute_inertia_tensors(snap, reduced=False, snapshot=snapshot)
 elif (options['catalogues']['shapes_method']=='reduced_inertia_tensor'):
-    lib.compute_inertia_tensors(snap, reduced=True)
+    lib.compute_inertia_tensors(snap, reduced=True, snapshot=snapshot)
 elif (options['catalogues']['shapes_method']=='spin'):
-    lib.compute_spin(snap, component='baryons')
+    lib.compute_spin(snap, component='baryons', snapshot=snapshot)
