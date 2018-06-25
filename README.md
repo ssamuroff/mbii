@@ -71,6 +71,8 @@ This step involves various matching, calculation of derived quantities and appli
 
 `python -m mbii.pipeline.construct_catalogue --config config/fiducial_cat.yaml`
 
+_Beware - this step is very slow!_
+
 #### 3. Symmetrise the catalogues
 
 This is is only useful for specific applications. Spin satellite galaxies about the halo centres, maintaining the relative orientation to those centres. Should leave the central objects unchanged.
