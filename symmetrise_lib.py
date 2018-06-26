@@ -8,7 +8,7 @@ import mbii.lego_tools as utils
 from numpy.core.records import fromarrays
 
 
-def symmetrise_catalogue3(data=None, seed=4000, mask=None, filename='/home/ssamurof/massive_black_ii/subhalo_cat-nthreshold5.fits', pivot='mass', central='spatial_central', savedir=None, replace=False, verbose=True, nmin=0, rank=0, size=1):
+def symmetrise_catalogue3(data=None, seed=4000, mask=None, filename='/home/ssamurof/massive_black_ii/subhalo_cat-nthreshold5.fits', pivot='mass', central='spatial_central', snapshot=85, savedir=None, replace=False, verbose=True, nmin=0, rank=0, size=1):
     """Takes a catalogue of subhalos with orientations, positions and host halo identifiers.
 	   Cycles through the objects and applies a random rotation about the halo centre to each,
 	   recalculating the position and shape vectors such that the relative orientation to
@@ -68,7 +68,7 @@ def symmetrise_catalogue3(data=None, seed=4000, mask=None, filename='/home/ssamu
             continue
 
         # Now apply the symmetrisation operation to these galaxies
-        symmetrised_halo = symmetrise_halo5(data[select], verbose=True, g=g, pivot=pivot, central=central)
+        symmetrised_halo = symmetrise_halo5(data[select], verbose=True, g=g, pivot=pivot, central=central, snapshot=snapshot)
 
         if verbose:
             print g, ngal
@@ -100,7 +100,7 @@ def symmetrise_halo4(data, verbose=True, g=None):
     n = data.size
 
     # Work out the centroid about which to rotate  
-    data, positions, (x0, y0, z0) = get_wrapped_positions(g, data) 
+    data, positions, (x0, y0, z0) = get_wrapped_positions(g, data, snapshot=snapshot) 
     cent = np.array([x0,y0,z0])
 
     # New array to store the output
@@ -191,7 +191,7 @@ def symmetrise_halo4(data, verbose=True, g=None):
     return rot
 
 
-def symmetrise_halo5(data, verbose=True, g=None, pivot='mass', central='spatial_central'):
+def symmetrise_halo5(data, verbose=True, g=None, pivot='mass', central='spatial_central', snapshot=85):
     """
     Takes an array of objects associated with a particular halo,
     queries the database on coma to find the halo centroid positions
@@ -203,7 +203,7 @@ def symmetrise_halo5(data, verbose=True, g=None, pivot='mass', central='spatial_
     n = data.size
 
     # Work out the centroid about which to rotate  
-    data, positions, (x0, y0, z0) = get_wrapped_positions(g, data, pivot=pivot) 
+    data, positions, (x0, y0, z0) = get_wrapped_positions(g, data, pivot=pivot, snapshot=snapshot) 
     cent = np.array([x0,y0,z0])
 
     # New array to store the output
@@ -248,6 +248,8 @@ def symmetrise_halo5(data, verbose=True, g=None, pivot='mass', central='spatial_
         rotation_axis, rotation_angle = infer_rotation_angle(pos,rotated)
         Rxyz = build_rotation_matrix(alpha=rotation_angle, vec=rotation_axis)
 
+        if (R>70): import pdb ; pdb.set_trace()
+
         if verbose:
             print 'New position (x, y, z) : %3.3f, %3.3f %3.3f'%(rot['x'][i],rot['y'][i],rot['z'][i])
 
@@ -277,9 +279,11 @@ def symmetrise_halo5(data, verbose=True, g=None, pivot='mass', central='spatial_
         if verbose: 
             print 'Rotation leaves %d object(s) outside the simulation box.'%(rot['x'][(rot['x']<0) | (rot['y']<0) | (rot['z']<0)].size)
 
-        rot = check_wrapping(i, rot)
+        rot0 = check_wrapping(i, rot)
 
-        if rot['x'][i]<0 : import pdb ; pdb.set_trace()
+        if rot0['x'][i]<0 : import pdb ; pdb.set_trace()
+
+        rot = rot0
 
         # Store everything in the appropriate place
         for j in xrange(3):
@@ -312,10 +316,10 @@ def project_ellipticities(i, rot, suffix=''):
 	return rot
 
 
-def get_wrapped_positions(g, data, pivot='mass'):
+def get_wrapped_positions(g, data, pivot='mass', snapshot=85):
     # Query the DB for the halo centre
     if (pivot.lower()=='mass'):
-    	info = find_centre(g)
+    	info = find_centre(g, snapshot=snapshot)
     elif (pivot.lower()=='most_massive_galaxy'):
     	info = np.zeros(1,dtype=[('x',float),('y',float),('z',float)])
     	mask = (data['most_massive']==1)
@@ -444,10 +448,10 @@ def build_rotation_matrix(theta=None, phi=None, alpha=None, vec=[]):
     return R
 
 
-def find_centre(g):
+def find_centre(g, snapshot=85):
     """Locate the mass centroid of a particular group of galaxies"""
     import pymysql as mdb
-    sql = 'SELECT x,y,z FROM subfind_groups WHERE groupId=%d AND snapnum=85;'%g
+    sql = 'SELECT x,y,z FROM subfind_groups WHERE groupId=%d AND snapnum=%d;'%(g, snapshot)
 
     sqlserver='localhost' ; user='flanusse' ; password='mysqlpass' ; dbname='mb2_hydro'
     unix_socket='/home/rmandelb.proj/flanusse/mysql/mysql.sock'

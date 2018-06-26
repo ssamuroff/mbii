@@ -1,6 +1,6 @@
 
 random_seed : 99000
-root_folder : '/nfs/nas-0-1/vat/Illustris-1/snapdir_135/'
+root_folder : '/nfs/nas-0-1/vat/Illustris-1'
 simulation : illustris
 
 catalogues:
@@ -13,9 +13,9 @@ catalogues:
     cuts :
         npart_dm : 1000 1e60
         npart_baryon : 300 1e60
-        x : 0. 100000.
-        y : 0. 100000.
-        z : 0. 100000.
+        x : 0. 75000.
+        y : 0. 75000.
+        z : 0. 75000.
 
     halo_matching : True
 

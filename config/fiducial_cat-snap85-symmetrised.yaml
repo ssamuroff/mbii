@@ -5,8 +5,8 @@ simulation : massiveblackii
 
 catalogues:
     snapshot : 85
-    shapes_method : reduced_inertia_tensor 
-    postprocessed : /physics2/ssamurof/massive_black_ii/cats/final/postprocessed/base_subhalo-reduced_shapes-v10-ndm1000-nst300-snapshot85.fits
+    shapes_method : inertia_tensor 
+    postprocessed : /physics2/ssamurof/massive_black_ii/cats/final/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85.fits
     shapes_dir : /physics2/ssamurof/massive_black_ii/cats/final/raw
 
     cuts :
@@ -19,10 +19,11 @@ catalogues:
     halo_matching : True
 
 symmetrisation:
-    catalogue : /physics2/ssamurof/massive_black_ii/cats/final/postprocessed/base_subhalo-reduced_shapes-v10-ndm1000-nst300-snapshot85.fits
-    output : /physics2/ssamurof/massive_black_ii/cats/final/postprocessed/base_subhalo-reduced_shapes-v10-ndm1000-nst300-snapshot85-symmetrised.fits
+    catalogue : /physics2/ssamurof/massive_black_ii/cats/final/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85.fits
+    output : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85-symmetrised.fits
     pivot_type : mass
     central_type : spatial_central
+
 
 errors:
     nsub : 3
@@ -30,8 +31,8 @@ errors:
 2pt:
     ctypes : ed_nhalo ed ee gg giplus_proj giplus_3d 
     errors: True
-    shapes : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo-reduced_shapes-v10-ndm1000-nst300.fits
-    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/v10/
+    shapes : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v9-ndm1000-nst300.fits
+    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/v9/
     split : most_massive
     split_val : 1
     binning : log

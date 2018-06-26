@@ -9,6 +9,7 @@ from numpy.core.records import fromarrays
 
 import numpy as np
 from readsubhalo import *
+from mbii.readsubhalo import *
 import fitsio as fi
 
 def build_matrix(pos, reduced=False):
@@ -41,19 +42,19 @@ def build_matrix(pos, reduced=False):
 	return tensor
 
 def compute(i, k, x, subhalo_centroids, eigvalues, eigvalues_2d, eigvectors, eigvectors_2d, length, reduced=False):
-	norm = 1.0 * len(x[i].T[0])
+	norm = 1.0 * len(x.T[0])
 
 	# Check each coordinate, as calculated, is finite
 	# If not, use the weighted mean position of the dark matter particles instead
 	for j in [0,1,2]:
 		if not np.isfinite(subhalo_centroids[j][i]):
-			subhalo_centroids[j][i] = np.sum(x[i].T[j])/norm
+			subhalo_centroids[j][i] = np.sum(x.T[j])/norm
 
 	# Use the centre of the subhalo's potential well as the centroid here
 	# Work out the radial position of each particle from the centroid
-	pos = np.array([ x[i].T[0] - subhalo_centroids[0][i], 
-		             x[i].T[1] - subhalo_centroids[1][i], 
-		             x[i].T[2] - subhalo_centroids[2][i] ])
+	pos = np.array([ x.T[0] - subhalo_centroids[0][i], 
+		             x.T[1] - subhalo_centroids[1][i], 
+		             x.T[2] - subhalo_centroids[2][i] ])
 
 	tens = build_matrix(pos, reduced=reduced)
 
@@ -69,14 +70,14 @@ def compute(i, k, x, subhalo_centroids, eigvalues, eigvalues_2d, eigvectors, eig
 
 	return eigvalues, eigvalues_2d, eigvectors, eigvectors_2d, length
 
-def export(inclusion_threshold, eigvalues, eigvalues_2d, eigvectors_2d, eigvectors, subhalo_centroids, length, reduced=False, snapshot=85, dirname=''):
+def export(inclusion_threshold, eigvalues, eigvalues_2d, eigvectors_2d, eigvectors, subhalo_centroids, length, reduced=False, snapshot=85, simulation='massiveblackii', dirname='', rank=0):
 	"""Sorry."""
 
 	# Decide on the filename
  	if reduced:
- 		filename = '%s/subhalo_cat_reduced-nthreshold%d-snapshot%d-proj+3d.fits'%(dirname, inclusion_threshold, snapshot)
+ 		filename = '%s/%s-subhalo_cat_reduced-nthreshold%d-snapshot%d-proj+3d-%d.fits'%(simulation, dirname, inclusion_threshold, snapshot, rank)
  	else:
- 		filename = '%s/subhalo_cat-nthreshold%d-snapshot%d-proj+3d.fits'%(dirname, inclusion_threshold, snapshot)
+ 		filename = '%s/%s-subhalo_cat-nthreshold%d-snapshot%d-proj+3d-%d.fits'%(simulation, dirname, inclusion_threshold, snapshot, rank)
 
  	print "Saving output to %s"%filename
  	out = fi.FITS(filename,'rw')
@@ -140,6 +141,32 @@ def export(inclusion_threshold, eigvalues, eigvalues_2d, eigvectors_2d, eigvecto
  	out[-1].write_key('EXTNAME', 'baryons')
  	out.close()
 
+def load_single_subhalo(i, simulation, snapshot, root):
+	if (simulation.lower()=='massiveblackii'):
+
+		snap = SnapDir('0%d'%snapshot, root)
+		h = snap.readsubhalo()
+
+		# Load the positions and masses of the constituent particles
+		#print 'Loading dark matter particles'
+		x = snap.load(1, 'pos', h)[i]
+
+		#print 'Loading star particles'
+		xb = snap.load(4, 'pos', h)[i]
+
+	elif (simulation.lower()=='illustris'):
+		import illustris_python as il
+
+		#print 'Loading dark matter particles'
+		x = il.snapshot.loadSubhalo(root, snapshot, i ,'dm',['Coordinates'])
+		#print 'Loading star particles'
+		xb = il.snapshot.loadSubhalo(root, snapshot, i ,'stars',['Coordinates'])
+
+	else:
+		raise ValueError('Unknown simulation. Sorry.')
+
+	return x, xb
+
 
 def read_subhalo_data(simulation, snapshot, root):
 	"""Read in the particle information from either MBII or Illustris.
@@ -148,7 +175,6 @@ def read_subhalo_data(simulation, snapshot, root):
 	   the shape code can use equivalently."""
 
 	if (simulation.lower()=='massiveblackii'):
-		from mbii.readsubhalo import *
 
 		snap = SnapDir('0%d'%snapshot, root)
 		h = snap.readsubhalo()
@@ -156,24 +182,27 @@ def read_subhalo_data(simulation, snapshot, root):
 		# Load the positions and masses of the constituent particles
 		print 'Loading dark matter particles'
 		x = snap.load(1, 'pos', h)
-		m = snap.load(1, 'mass', h)
 
 		print 'Loading star particles'
 		xb = snap.load(4, 'pos', h)
-		mb = snap.load(4, 'mass', h)
+
+		subhalo_positions = h['pos']
 
 	elif (simulation.lower()=='illustris'):
 		import illustris_python as il
-		subhalos = il.groupcat.loadSubhalos(root, snapshot)
+		x = []
+		m = []
+		xb = []
+		mb = []
 
-		h = 
+		subhalo_positions = il.groupcat.loadSubhalos(root, snapshot, fields=['SubhaloPos'])
 
 	else:
 		raise ValueError('Unknown simulation. Sorry.')
 
-	return h, x, m, xb, mb
+	return subhalo_positions, x, xb
 
-def compute_inertia_tensors(options, reduced=False, inclusion_threshold=5, snapshot=85, savedir=''):
+def compute_inertia_tensors(options, rank, size, reduced=False, inclusion_threshold=5, snapshot=85, savedir=''):
  	""" Compute the intertia tensors for all subhalos. Do the calculation twice, for the
  	the dark matter and stellar component. Flatten the results and save as columns in a FITS file."""
  	print 'Using reduced (distance weighted) tensors', 'yes'*int(reduced), 'no'*int(np.invert(reduced) )
@@ -187,7 +216,7 @@ def compute_inertia_tensors(options, reduced=False, inclusion_threshold=5, snaps
 	simulation = options['simulation']
 	snapshot = options['catalogues']['snapshot']
 	root_folder = options['root_folder']
-	h, x, m, xb, mb = read_subhalo_data(simulation, snapshot)
+	h, x, xb = read_subhalo_data(simulation, snapshot, root_folder)
 	
     
 	eigvectors = np.zeros((2, len(h), 3, 3))
@@ -196,25 +225,36 @@ def compute_inertia_tensors(options, reduced=False, inclusion_threshold=5, snaps
 	eigvalues_2d  = np.zeros((2, len(h), 2))
 	length  = np.zeros((2, len(h)))
 
-	subhalo_centroids = np.array(h['pos'].T)
+	subhalo_centroids = np.array(h.T)
  
 	# Will compute an inertia tensor per subhalo
 	for i in range(len(h)):
+
+		# MPI handline
+		if i%size!=rank:
+			continue
+
 		if (i%100 ==0):
 			print "Done %d samples"%i
 
+		if (len(x)>0):
+			particle_positions_dm = x[i]
+			particle_positions_b = xb[i]
+		else:
+			particle_positions_dm, particle_positions_b = load_single_subhalo(i, simulation, snapshot, root_folder)
+
 		# Reject subhalos with less than some threshold occupation number
-		if (len(x[i]) < inclusion_threshold):
+		if (len(particle_positions_dm) < inclusion_threshold):
 			pass
 		else: 
-			eigvalues, eigvalues_2d, eigvectors, eigvectors_2d, length = compute(i, 0, x, subhalo_centroids, eigvalues, eigvalues_2d, eigvectors, eigvectors_2d, length, reduced=reduced)
+			eigvalues, eigvalues_2d, eigvectors, eigvectors_2d, length = compute(i, 0, particle_positions_dm, subhalo_centroids, eigvalues, eigvalues_2d, eigvectors, eigvectors_2d, length, reduced=reduced)
 			
-		if (len(xb[i]) < inclusion_threshold):
+		if (len(particle_positions_b) < inclusion_threshold):
 			pass
 		else:
-			eigvalues, eigvalues_2d, eigvectors, eigvectors_2d, length = compute(i, 1, xb, subhalo_centroids, eigvalues, eigvalues_2d, eigvectors, eigvectors_2d, length, reduced=reduced)
+			eigvalues, eigvalues_2d, eigvectors, eigvectors_2d, length = compute(i, 1, particle_positions_b, subhalo_centroids, eigvalues, eigvalues_2d, eigvectors, eigvectors_2d, length, reduced=reduced)
 
-	export(inclusion_threshold, eigvalues, eigvalues_2d, eigvectors_2d, eigvectors, subhalo_centroids, length, reduced=reduced, snapshot=snapshot, dirname=savedir)
+	export(inclusion_threshold, eigvalues, eigvalues_2d, eigvectors_2d, eigvectors, subhalo_centroids, length, reduced=reduced, snapshot=snapshot, simulation=simulation, dirname=savedir, rank=rank)
 	print 'Done'
 
 	return
@@ -223,7 +263,7 @@ def compute_inertia_tensors(options, reduced=False, inclusion_threshold=5, snaps
 
 
 
-def compute_spin(options, inclusion_threshold=1, component='baryons', nsubhalo=-1):
+def compute_spin(options, rank, size, inclusion_threshold=1, component='baryons', nsubhalo=-1):
     """ Compute the angular momentum for all subhalos for
     the dark matter and stellar components and saves the output
     as a FITS file.

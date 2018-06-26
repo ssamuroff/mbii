@@ -23,5 +23,7 @@ else:
 options = yaml.load(open(args.config))
 
 data = fi.FITS(options['symmetrisation']['catalogue'])[-1].read()
+snapshot = options['catalogues']['snapshot']
+print 'Symmetrising data in snapshot %d'%snapshot
 
-lib.symmetrise_catalogue3(data, pivot=options['symmetrisation']['pivot_type'], central=options['symmetrisation']['central_type'], seed=options['random_seed'], filename=options['symmetrisation']['catalogue'], savedir=options['symmetrisation']['output'], mask=None, rank=rank, size=size)
+lib.symmetrise_catalogue3(data, pivot=options['symmetrisation']['pivot_type'], snapshot=snapshot, central=options['symmetrisation']['central_type'], seed=options['random_seed'], filename=options['symmetrisation']['catalogue'], savedir=options['symmetrisation']['output'], mask=None, rank=rank, size=size)

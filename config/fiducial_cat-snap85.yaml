@@ -7,7 +7,6 @@ catalogues:
     snapshot : 85
     shapes_method : inertia_tensor 
     postprocessed : /physics2/ssamurof/massive_black_ii/cats/final/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85.fits
-
     shapes_dir : /physics2/ssamurof/massive_black_ii/cats/final/raw
 
     cuts :
@@ -21,7 +20,7 @@ catalogues:
 
 symmetrisation:
     catalogue : /physics2/ssamurof/massive_black_ii/cats/final/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85.fits
-    output : /physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85-symmetrised.fits
+    output : /physics2/ssamurof/massive_black_ii/cats/final/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85-symmetrised.fits
     pivot_type : mass
     central_type : spatial_central
 

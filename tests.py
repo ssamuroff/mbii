@@ -1,5 +1,122 @@
 import numpy as np 
 import mbii.lego_tools as utils
+import mbii.symmetrise_lib as lib
+
+def test_rotation_matrix():
+	# Start on the x axis, at unit distance
+	position = np.array([1,0,0])
+	answers = [[1,0,0], [0,1,0], [-1,0,0], [0,-1,0], [-1,0,0] ]
+	rotations = [0, np.pi/2, np.pi, -np.pi/2, -np.pi]
+	print 'Initial position: ', position
+	print ''
+	print 'Rotation axis: (theta,phi) = 0,0'
+
+	for rot,expected in zip(rotations, answers):
+		Rxyz = lib.build_rotation_matrix(alpha=rot, theta=0.0, phi=0.0)
+		rotated = np.dot(Rxyz,position)
+		print 'rotation angle: %3.3f rad'%rot,
+		if np.isclose(rotated,expected).all():
+			print 'Okay.'
+		else:
+			print 'Not okay.'
+			print 'Rotated position does not match the expected one'
+			print rotated, expected
+
+	# Try the same thing, but with a rotation vector aligned with the x axis
+	answers = [[1,0,0], [1,0,0], [1,0,0], [1,0,0], [1,0,0] ]
+	rotations = [0, np.pi/2, np.pi, -np.pi/2, -np.pi]
+	print ''
+	print 'Rotation axis: (theta,phi) = 0,pi/2'
+
+	for rot,expected in zip(rotations, answers):
+		Rxyz = lib.build_rotation_matrix(alpha=rot, theta=np.pi/2, phi=0.0)
+		rotated = np.dot(Rxyz,position)
+		print 'rotation angle: %3.3f rad'%rot,
+		if np.isclose(rotated,expected).all():
+			print 'Okay.'
+		else:
+			print 'Not okay.'
+			print 'Rotated position does not match the expected one'
+			print rotated, expected
+
+	# Try the same thing, but with a rotation vector aligned with the (negative) y axis
+	answers = [[1,0,0], [0,-1,0], [-1,0,0], [0,1,0], [-1,0,0] ]
+	rotations = [0, np.pi/2, np.pi, -np.pi/2, -np.pi]
+	print ''
+	print 'Rotation axis: (theta,phi) = 0,pi'
+
+	for rot,expected in zip(rotations, answers):
+		Rxyz = lib.build_rotation_matrix(alpha=rot, theta=np.pi, phi=0.0)
+		rotated = np.dot(Rxyz,position)
+		print 'rotation angle: %3.3f rad'%rot,
+		if np.isclose(rotated,expected).all():
+			print 'Okay.'
+		else:
+			print 'Not okay.'
+			print 'Rotated position does not match the expected one'
+			print rotated, expected
+
+def test_sphericity(cat, cat0=[]):
+	from mpl_toolkits.mplot3d import Axes3D
+	import matplotlib.pyplot as plt
+
+	fig = plt.figure()
+	ax = fig.add_subplot(111, projection='3d')
+	mask = cat['most_massive']==0
+	ax.plot(cat['x'][mask], cat['y'][mask], cat['z'][mask], '.', color='purple', alpha=0.5)
+	ax.plot(cat['x'][np.invert(mask)], cat['y'][np.invert(mask)], cat['z'][np.invert(mask)], 'x', color='pink')
+
+	if len(cat0)>0:
+		ax.plot(cat0['x'][mask], cat0['y'][mask], cat0['z'][mask], '*', color='hotpink')
+
+	plt.savefig('/home/ssamurof/spherical_test.png')
+
+	# Work out the quadrupole moments of the distribution
+	x = cat['x'][mask]
+	y = cat['y'][mask]
+	z = cat['z'][mask]
+	x0 = cat['x'][mask].mean()
+	y0 = cat['y'][mask].mean()
+	z0 = cat['z'][mask].mean()
+	r2 = (x-x0)**2+(y-y0)**2+(z-z0)**2
+	Qxx = sum(3*(x-x0)*(x-x0) - r2)
+	Qyy = sum(3*(y-y0)*(y-y0) - r2)
+	Qzz = sum(3*(z-z0)*(z-z0) - r2)
+
+	# Do the same with a trefoil configuration
+	nelem = len(x)
+	r0 = (x-x0).max()
+	pad = np.zeros(nelem)
+	dx=[]
+	dy=[]
+	dz=[]
+	for i in xrange(nelem):
+		r = np.random.choice([r0,-r0])
+		j = np.random.choice(3)
+		if j==0:
+			dx.append(r) ; dy.append(0) ; dz.append(0)
+		if j==1:
+			dx.append(0) ; dy.append(r) ; dz.append(0)
+		if j==2:
+			dx.append(0) ; dy.append(0) ; dz.append(r)
+
+	dx = np.array(dx)
+	dy = np.array(dy)
+	dz = np.array(dz)
+
+	r2 = dx**2+dy**2+dz**2
+	Qxx_ref = sum(3*dx*dx - r2)
+	Qyy_ref = sum(3*dy*dy - r2)
+	Qzz_ref = sum(3*dz*dz - r2)
+
+	print Qxx/Qzz,Qyy/Qzz,Qzz/Qzz
+	print 'Reference case: ', Qxx_ref/Qzz_ref,Qyy_ref/Qzz_ref,Qzz_ref/Qzz_ref
+
+
+
+
+
+
 
 def test4():
 	"""Reposition the galaxy on the x axis, as defined by the host halo.
@@ -41,7 +158,7 @@ def test4():
 			print 'orientation = %3.3f %3.3f %3.3f'%(arot[0], arot[1], arot[2])
 			print ''
 
-def test5():
+def test_projection():
 	# Perfect sphere
 	a3d = np.array([[1,0,0]])
 	b3d = np.array([[0,1,0]])
