@@ -1,0 +1,11 @@
+#!/bin/bash 
+#PBS -N illustris-shapes
+#PBS -l nodes=1:ppn=6
+#PBS -l walltime=12:00:00
+#PBS -o /home/ssamurof/logs/illustris.log
+#PBS -q intel
+#PBS -j oe
+
+source /home/ssamurof/numpy-dev/bin/activate
+
+mpiexec -n 6 python -m mbii.pipeline.calculate_shapes --mpi --config /home/ssamurof/.local/lib/python2.7/site-packages/mbii/config/illustris_cat-snap135.yaml
