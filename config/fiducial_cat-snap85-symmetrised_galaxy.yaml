@@ -6,8 +6,8 @@ simulation : massiveblackii
 catalogues:
     snapshot : 85
     shapes_method : inertia_tensor 
-    postprocessed : /physics2/ssamurof/massive_black_ii/cats/final/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85.fits
-    shapes_dir : /physics2/ssamurof/massive_black_ii/cats/final/raw
+    postprocessed : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85.fits
+    shapes_dir : /physics2/ssamurof/massive_black_ii/cats/final2/raw
 
     cuts :
         npart_dm : 1000 1e60
@@ -19,8 +19,8 @@ catalogues:
     halo_matching : True
 
 symmetrisation:
-    catalogue : /physics2/ssamurof/massive_black_ii/cats/final/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85.fits
-    output : /physics2/ssamurof/massive_black_ii/cats/final/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85-galaxy_symmetrised.fits
+    catalogue : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85.fits
+    output : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85-galaxy_symmetrised.fits
     pivot_type : most_central_galaxy
     central_type : spatial_central
 
@@ -40,7 +40,7 @@ errors:
     rmax : 33.
     nbin : 6
     rpmin : 0.1
-    rpmax : 30.
+    rpmax : 33.
     nrpbin : 6
-    pi_max : 0.2
+    pi_max : 33.
 

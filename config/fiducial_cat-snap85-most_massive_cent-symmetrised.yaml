@@ -4,10 +4,10 @@ root_folder : '/physics/yfeng1/mb2'
 simulation : massiveblackii
 
 catalogues:
-    snapshot : 73
+    snapshot : 85
     shapes_method : inertia_tensor 
-    postprocessed : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot73.fits
-    shapes_dir : /physics2/ssamurof/massive_black_ii/cats/final2/raw/
+    postprocessed : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85.fits
+    shapes_dir : /physics2/ssamurof/massive_black_ii/cats/final2/raw
 
     cuts :
         npart_dm : 1000 1e60
@@ -19,10 +19,10 @@ catalogues:
     halo_matching : True
 
 symmetrisation:
-    catalogue : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot73.fits
-    output : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot73-symmetrised.fits
+    catalogue : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85.fits
+    output : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85-most_massive_cent_symmetrised.fits
     pivot_type : mass
-    central_type : spatial_central
+    central_type : most_massive
 
 
 errors:
@@ -33,14 +33,14 @@ errors:
     errors: True
     shapes : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v9-ndm1000-nst300.fits
     savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/v9/
-    split : spatial_central
+    split : most_massive
     split_val : 1
     binning : log
     rmin : 0.1
     rmax : 33.
     nbin : 6
     rpmin : 0.1
-    rpmax : 33..0
+    rpmax : 30.
     nrpbin : 6
-    pi_max : 33.0
+    pi_max : 0.2
 
