@@ -9,31 +9,32 @@ include :
     halo_matching : True
 
 snapshot : 85
+random_seed : 9000
 
 baryon_shapes : /Users/hattifattener/Documents/ias/mbii/subhalo_cat-nthreshold5-proj+3d.fits
 dm_shapes : /Users/hattifattener/Documents/ias/mbii/subhalo_cat-nthreshold5-proj+3d.fits
-output : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v9-ndm1000-nst300.fits
+output : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v10-ndm300-nst300.fits
 
 symmetrisation:
-    catalogue : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v9-ndm1000-nst300.fits
-    output : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v9-ndm1000-nst300-symmetrised-testing0.fits
+    catalogue : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v10-ndm300-nst300.fits
+    output : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v10-ndm300-nst300-symmetrised.fits
 
 errors:
     nsub : 3
 
 
 2pt:
-    ctypes : ed ee gg giplus_proj giplus_3d
+    ctypes : ed iiplus_proj giplus_proj ee gg
     errors: True
-    shapes : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v9-ndm1000-nst300-symmetrised-testing0.fits
-    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/v9/symmetrised
-    split : most_massive
+    shapes : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v10-ndm1000-nst300-symmetrised0.fits
+    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns1000_nd300/v10/symmetrised
+    split : spatial_central
     split_val : 1
     binning : log
     rmin : 0.1
     rmax : 33.
     nbin : 6
     rpmin : 0.1
-    rpmax : 30.
+    rpmax : 33.
     nrpbin : 6
-    pi_max : 0.2
+    pi_max : 33.
