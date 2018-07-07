@@ -29,10 +29,10 @@ errors:
     nsub : 3
 
 2pt:
-    ctypes : ed_nhalo ed ee gg giplus_proj giplus_3d 
+    ctypes : ed ee giplus_proj iiplus_proj
     errors: True
-    shapes : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v9-ndm1000-nst300.fits
-    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/v9/
+    shapes : /Users/hattifattener/Documents/ias/mbii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85-most_massive_cent_symmetrised0.fits
+    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/v10/snapshot85/altcent/symmetrised
     split : most_massive
     split_val : 1
     binning : log
@@ -40,7 +40,7 @@ errors:
     rmax : 33.
     nbin : 6
     rpmin : 0.1
-    rpmax : 30.
+    rpmax : 33.
     nrpbin : 6
-    pi_max : 0.2
+    pi_max : 33.
 

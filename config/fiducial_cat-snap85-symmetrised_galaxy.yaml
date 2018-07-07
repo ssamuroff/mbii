@@ -38,9 +38,9 @@ errors:
     binning : log
     rmin : 0.1
     rmax : 33.
-    nbin : 13
+    nbin : 6
     rpmin : 0.1
     rpmax : 33.
-    nrpbin : 13
+    nrpbin : 6
     pi_max : 33.
 
