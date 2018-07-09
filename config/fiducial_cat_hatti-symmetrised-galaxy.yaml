@@ -1,0 +1,40 @@
+cuts :
+    npart_dm : 1000 1e60
+    npart_baryon : 300 1e60
+    x : 0. 100000.
+    y : 0. 100000.
+    z : 0. 100000.
+
+include :
+    halo_matching : True
+
+snapshot : 85
+random_seed : 9000
+
+baryon_shapes : /Users/hattifattener/Documents/ias/mbii/subhalo_cat-nthreshold5-proj+3d.fits
+dm_shapes : /Users/hattifattener/Documents/ias/mbii/subhalo_cat-nthreshold5-proj+3d.fits
+output : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v10-ndm1000-nst300.fits
+
+symmetrisation:
+    catalogue : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v10-ndm1000-nst300.fits
+    output : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v10-ndm1000-nst300-symmetrised.fits
+
+errors:
+    nsub : 3
+
+
+2pt:
+    ctypes : iiplus_proj giplus_proj_m giplus_proj ed ee ee_nhalo ed_nhalo gg  
+    errors: True
+    shapes : /Users/hattifattener/Documents/ias/mbii/cats/base_subhalo_shapes-v10-ndm1000-nst300-spgalaxy-symmetrised0.fits
+    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/v10/symmetrised/galaxy/
+    split : spatial_central
+    split_val : 1
+    binning : log
+    rmin : 0.1
+    rmax : 33.
+    nbin : 6
+    rpmin : 0.1
+    rpmax : 30.
+    nrpbin : 6
+    pi_max : 33.
