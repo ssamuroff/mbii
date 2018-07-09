@@ -122,7 +122,7 @@ class catalogue:
 	def __init__(self):
 		print 'Set up subhalo catalogue'
 
-	def build_selection_mask(self, cuts, baryons, dm, h, verbosity=1):
+	def build_selection_mask(self, cuts, q, verbosity=1):
 		if verbosity>0:
 			"Constructing subhalo selection cut"
 
@@ -135,22 +135,8 @@ class catalogue:
 			if (verbosity>0):
 				print '%s < %s < %s'%(lower, name, upper)
 
-			if ('npart_dm' in name):
-				n = h['lenbytype'].T[1]
-				sel = (n>float(upper)) | (n<float(lower))
-				sel = sel | np.invert(np.isfinite(n))
-			elif ('npart_baryon' in name):
-				n = h['lenbytype'].T[4]
-				sel = (n>float(upper)) | (n<float(lower))
-				sel = sel | np.invert(np.isfinite(n))
-			elif (name in ['x', 'y', 'z']):
-				lookup = {'x':0, 'y':1, 'z':2}
-				p = h['pos'].T[lookup[name]]
-				sel = (p>float(upper)) | (p<float(lower))
-				sel = sel | np.invert(np.isfinite(p))
-			else:
-				sel = (baryons[name]>float(upper)) | (baryons[name]<float(lower))
-				sel = sel | np.invert(np.isfinite(baryons[name]))
+			sel = (q[name]>float(upper)) | (q[name]<float(lower))
+			sel = sel | np.invert(np.isfinite(q[name]))
 			mask[sel] = 0
 
 		self.mask = mask.astype(bool)
@@ -333,31 +319,31 @@ ig, pos, md, ms, mg, nd, ns, vspin, vdisp = slib.read_subhalo_data_all(config['s
 # Read in the data
 if (config['catalogues']['shapes_method']=='reduced_inertia_tensor'):
 	shapes_filename = '%s/%s-subhalo_cat_reduced-nthreshold%d-snapshot%d-proj+3d.fits'%( config['catalogues']['shapes_dir'], config['simulation'], 5, int(snapshot))
-else:
+elif (config['catalogues']['shapes_method']=='inertia_tensor'):
 	shapes_filename = '%s/%s-subhalo_cat-nthreshold%d-snapshot%d-proj+3d.fits'%( config['catalogues']['shapes_dir'], config['simulation'], 5, int(snapshot))
-
-
-if args.verbosity>0:
-	print 'Reading baryon information from ', shapes_filename
-baryons = fi.FITS(shapes_filename)['baryons'].read()
+else:
+	raise ValueError("Unknown shape method. Please choose from 'reduced_inertia_tensor' and 'inertia_tensor'.")
 
 if args.verbosity>0:
-	print 'Reading dark matter information from ', shapes_filename
+	print 'Reading subhalo information from ', shapes_filename
+
 dm = fi.FITS(shapes_filename)['dm'].read()
+baryons = fi.FITS(shapes_filename)['baryons'].read()
 
 # Now create an array in which to store the required columns
 cat = catalogue()
 
-# Do the central/satellite flagging
-halos = halo_wrapper(config['catalogues']['snapshot'], verbosity=args.verbosity)
-#spatial_cflag, mass_cflag, R_pergal = cat.find_cs_flag(halos.group_info, h, dm, baryons)
-
 # Impose the selection cuts, as specified in the configuration file
-mask = cat.build_selection_mask(config['catalogues']['cuts'], baryons, dm, h, verbosity=args.verbosity)
+h = np.zeros(md.size, dtype=[('npart_dm',int), ('npart_baryon', int), ('x', float), ('y', float), ('z', float), ('groupid', int) ])
+h['x'] = pos.T[0]
+h['y'] = pos.T[1]
+h['z'] = pos.T[2]
+h['npart_baryon']=ns
+h['npart_dm']=nd
+mask = cat.build_selection_mask(config['catalogues']['cuts'], h, verbosity=args.verbosity)
 mask = mask & np.isfinite(pos.T[0]) & np.isfinite(pos.T[1]) & np.isfinite(pos.T[2])
 
 cat.array = np.zeros(baryons[mask].size, dtype=dt)
-
 
 print 'Building mass flags.'
 massflag = np.zeros(dm['x'].size)
@@ -367,8 +353,6 @@ ids,indices=np.unique(gids, return_index=True)
 massflag[indices]=1
 
 cat.array['most_massive'] = massflag[mask]
-#cat.array['spatial_central'] = spatial_cflag[mask]
-#cat.array['rh'] = R_pergal[mask]
 
 # The ids, masses and particle numbers are fairly straightforwards to obtain 
 i = np.arange(0, baryons.size, 1)
@@ -385,7 +369,7 @@ cat.array['y'] = pos.T[1][mask]/1e3
 cat.array['z'] = pos.T[2][mask]/1e3
 
 cat.array['vrot'] = vspin[mask]
-cat.array['sigma'] = vdisp[mask]
+#cat.array['sigma'] = np.sqrt(np.sum([ vdisp.T[i0]**2 for i0 in [0,1,2] ], axis=0))
 
 # Copy over the 3D shape vectors
 cat.array['a1'] = baryons['c1'][mask]
@@ -431,8 +415,15 @@ for j in xrange(cat.array.size):
 # Now find the associated halo per galaxy
 # We'll need to read out this information from the database
 if config['catalogues']['halo_matching']:
-	R, ind, info = halos.populate(cat.array)
-	cat.array['halo_id'] = info['groupId']
+	if (config['simulation']=='massiveblackii'):
+		R, ind, info = halos.populate(cat.array)
+		cat.array['halo_id'] = info['groupId']
+	else:
+		import illustris_python as il
+		root='/nfs/nas-0-1/vat/Illustris-1'
+		sub = il.groupcat.loadSubhalos(root, config['catalogues']['snapshot'])
+		cat.array['halo_id'] = sub['SubhaloParent'][mask]
+		h['groupid'] = sub['SubhaloParent']
 
 else:
 	ref = fi.FITS('/physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v2.fits')[1].read()
@@ -445,7 +436,7 @@ else:
 
 print 'Obtaining galaxy offsets'
 for i, g in enumerate(cat.array['halo_id']):
-	centroid = lib.find_centre(g, snapshot=config['catalogues']['snapshot'])
+	centroid = lib.find_centre(g, snapshot=config['catalogues']['snapshot'], simulation=config['simulation'])
 	x0 = centroid['x']
 	y0 = centroid['y']
 	z0 = centroid['z']
@@ -464,10 +455,10 @@ zcent = np.zeros(pos.T[2].size)
 ng=np.unique(h['groupid']).size
 for i, g in enumerate(np.unique(ig)):
     if not (g in np.unique(cat.array['halo_id'])): continue 
-    centroid = lib.find_centre(g, config['catalogues']['snapshot'])
-    x0 = centroid['x']/1000
-    y0 = centroid['y']/1000
-    z0 = centroid['z']/1000
+    centroid = lib.find_centre(g, config['catalogues']['snapshot'], simulation=config['simulation'])
+    x0 = centroid['x']
+    y0 = centroid['y']
+    z0 = centroid['z']
     hmask = (h['groupid']==g)
     x = pos.T[0][hmask]/1000
     y = pos.T[1][hmask]/1000
