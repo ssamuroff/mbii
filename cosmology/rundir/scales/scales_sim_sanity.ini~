@@ -1,0 +1,197 @@
+[2pt_like]
+angle_range_xip_1_1 : 7.195005 999.0
+angle_range_xip_2_1 : 7.195005 999.0
+angle_range_xip_3_1 : 5.715196 999.0
+angle_range_xip_4_1 : 5.715196 999.0
+angle_range_xip_2_2 : 4.539741 999.0
+angle_range_xip_3_2 : 4.539741 999.0
+angle_range_xip_4_2 : 4.539741 999.0
+angle_range_xip_3_3 : 3.606045 999.0
+angle_range_xip_4_3 : 3.606045 999.0
+angle_range_xip_4_4 : 3.606045 999.0
+
+
+angle_range_xip_1_2 : 7.195005 999.0
+angle_range_xip_1_3 : 5.715196 999.0
+angle_range_xip_1_4 : 5.715196 999.0
+angle_range_xip_2_3 : 4.539741 999.0
+angle_range_xip_2_4 : 4.539741 999.0
+angle_range_xip_3_4 : 3.606045 999.0
+
+
+angle_range_xip_5_1 : 700.195005 999.0
+angle_range_xip_6_1 : 700.195005 999.0
+angle_range_xip_7_1 : 5000.715196 999.0
+angle_range_xip_8_1 : 500.715196 999.0
+
+
+angle_range_xip_5_2 : 900. 999.0
+angle_range_xip_6_2 : 400.539741 999.0
+angle_range_xip_7_2 : 400.539741 999.0
+angle_range_xip_8_2 : 400.539741 999.0
+
+angle_range_xip_5_3 : 900.606045 999.0
+angle_range_xip_6_3 : 900.606045 999.0
+angle_range_xip_7_3 : 3000.606045 999.0
+angle_range_xip_8_3 : 3000.606045 999.0
+
+angle_range_xip_5_4 : 900.715196 999.0
+angle_range_xip_6_4 : 900.715196 999.0
+angle_range_xip_7_4 : 900.715196 999.0
+angle_range_xip_8_4 : 5000.715196 999.0
+
+
+
+angle_range_xip_5_5 : 700.195005 999.0
+angle_range_xip_6_5 : 700.195005 999.0
+angle_range_xip_7_5 : 5000.715196 999.0
+angle_range_xip_8_5 : 5000.715196 999.0
+angle_range_xip_6_6 : 4000.539741 999.0
+angle_range_xip_7_6 : 4000.539741 999.0
+angle_range_xip_8_6 : 4000.539741 999.0
+angle_range_xip_7_7 : 3000.606045 999.0
+angle_range_xip_8_7 : 3000.606045 999.0
+angle_range_xip_8_8 : 3000.606045 999.0
+
+
+angle_range_xim_1_1 : 90.579750 999.0
+angle_range_xim_2_1 : 71.950053 999.0
+angle_range_xim_3_1 : 71.950053 999.0
+angle_range_xim_4_1 : 71.950053 999.0
+angle_range_xim_2_2 : 57.151958 999.0
+angle_range_xim_3_2 : 57.151958 999.0
+angle_range_xim_4_2 : 45.397414 999.0
+angle_range_xim_3_3 : 45.397414 999.0
+angle_range_xim_4_3 : 45.397414 999.0
+angle_range_xim_4_4 : 36.060448 999.0
+angle_range_xim_1_2 : 71.950053 999.0
+angle_range_xim_1_3 : 71.950053 999.0
+angle_range_xim_1_4 : 71.950053 999.0
+angle_range_xim_2_3 : 57.151958 999.0
+angle_range_xim_2_4 : 45.397414 999.0
+angle_range_xim_3_4 : 45.397414 999.0
+
+
+angle_range_xim_5_5 : 9000.579750 999.0
+angle_range_xim_6_5 : 7100.950053 999.0
+angle_range_xim_7_5 : 7100.950053 999.0
+angle_range_xim_8_5 : 7100.950053 999.0
+angle_range_xim_6_6 : 5700.151958 999.0
+angle_range_xim_7_6 : 5700.151958 999.0
+angle_range_xim_8_6 : 4500.397414 999.0
+angle_range_xim_8_7 : 4500.397414 999.0
+angle_range_xim_8_7 : 4500.397414 999.0
+angle_range_xim_8_8 : 3600.060448 999.0
+angle_range_xim_5_6 : 9000.579750 999.0
+angle_range_xim_5_7 : 9000.579750 999.0
+angle_range_xim_5_8 : 9000.579750 999.0
+angle_range_xim_6_8 : 5700.151958 999.0
+angle_range_xim_6_8 : 5700.151958 999.0
+angle_range_xim_7_8 : 9000.397414 999.0
+
+
+
+angle_range_xim_5_1 : 9000.579750 999.0
+angle_range_xim_6_1 : 9000.579750 999.0
+angle_range_xim_7_1 : 7100.950053 999.0
+angle_range_xim_8_1 : 7100.950053 999.0
+
+
+angle_range_xim_5_2 : 5700.151958 999.0
+angle_range_xim_6_2 : 5700.151958 999.0
+angle_range_xim_7_2 : 5700.151958 999.0
+angle_range_xim_8_2 : 5700.151958 999.0
+
+angle_range_xim_5_3 : 4500.397414 999.0
+angle_range_xim_6_3 : 4500.397414 999.0
+angle_range_xim_7_3 : 4500.397414 999.0
+angle_range_xim_8_3 : 4500.397414 999.0
+
+angle_range_xim_5_4 : 4500.397414 999.0
+angle_range_xim_6_4 : 4500.397414 999.0
+angle_range_xim_7_4 : 4500.397414 999.0
+angle_range_xim_8_4 : 4500.397414 999.0
+
+
+angle_range_xip_1_5 : 700.195005 999.0
+angle_range_xip_1_6 : 700.195005 999.0
+angle_range_xip_1_7 : 5000.715196 999.0
+angle_range_xip_1_8 : 5000.715196 999.0
+angle_range_xim_1_5 : 9000.579750 999.0
+angle_range_xim_1_6 : 9000.579750 999.0
+angle_range_xim_1_7 : 7100.950053 999.0
+angle_range_xim_1_8 : 7100.950053 999.0
+
+angle_range_xip_2_5 : 999. 999.0
+angle_range_xip_2_6 : 4000.539741 999.0
+angle_range_xip_2_7 : 4000.539741 999.0
+angle_range_xip_2_8 : 4000.539741 999.0
+angle_range_xim_2_5 : 998.0 999.0
+angle_range_xim_2_6 : 5700.151958 999.0
+angle_range_xim_2_7 : 5700.151958 999.0
+angle_range_xim_2_8 : 5700.151958 999.0
+
+
+angle_range_xip_3_5 : 998.0 999.0
+angle_range_xip_3_6 : 998.0 999.0
+angle_range_xip_3_7 : 3000.606045 999.0
+angle_range_xip_3_8 : 3000.606045 999.0
+angle_range_xim_3_5 : 998.0 999.0
+angle_range_xim_3_6 : 998.0 999.0
+angle_range_xim_3_7 : 45000.397414 999.0
+angle_range_xim_3_8 : 45000.397414 999.0
+
+
+angle_range_xip_4_5 : 998.0 999.0
+angle_range_xip_4_6 : 998.0 999.0
+angle_range_xip_4_7 : 998.0 999.0
+angle_range_xip_4_8 : 5000.715196 999.0
+angle_range_xim_4_5 : 998.0 999.0
+angle_range_xim_4_6 : 998.0 999.0
+angle_range_xim_4_7 : 998.0 999.0
+angle_range_xim_4_8 : 45000.397414 999.0
+
+
+
+
+
+angle_range_xip_5_6 : 900.195005 999.0
+angle_range_xip_5_7 : 900.715196 999.0
+angle_range_xip_5_8 : 900.715196 999.0
+angle_range_xip_6_7 : 900.539741 999.0
+angle_range_xip_6_8 : 900.539741 999.0
+angle_range_xip_7_8 : 900.606045 999.0
+
+angle_range_xim_3_5 : 4500.397414 999.0
+angle_range_xim_3_6 : 4500.397414 999.0
+angle_range_xim_3_7 : 4500.397414 999.0
+angle_range_xim_3_8 : 905.397414 999.0
+
+
+angle_range_xim_4_5 : 905.397414 999.0
+angle_range_xim_4_6 : 905.397414 999.0
+angle_range_xim_4_7 : 905.397414 999.0
+angle_range_xim_4_8 : 905.397414 999.0
+
+angle_range_xim_6_7 : 5700.151958 999.0
+angle_range_xim_7_7 : 5700.151958 999.0
+
+
+
+angle_range_xim_1_5 : 9000.579750 999.0
+angle_range_xim_1_6 : 900.579750 999.0
+angle_range_xim_1_7 : 710.950053 999.0
+angle_range_xim_1_8 : 710.950053 999.0
+
+angle_range_xim_2_5 : 998.0 999.0
+angle_range_xim_2_6 : 5700.151958 999.0
+angle_range_xim_2_7 : 5700.151958 999.0
+angle_range_xim_2_8 : 5700.151958 999.0
+
+
+
+
+angle_range_gammat_5_7 : 1100.403315 999999.000000
+angle_range_gammat_5_8 : 1100.403315 999999.000000
+
+
