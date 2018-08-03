@@ -52,7 +52,10 @@ def execute(block, config):
 	block['matter_intrinsic_power', 'p_k'] = GI_modified
 	block['intrinsic_power', 'p_k'] = II_modified
 
-	import pdb ; pdb.set_trace()
+	z, k, p_gm = block.get_grid("matter_galaxy_power", "z", "k_h", "p_k")
+	p_nl = block['matter_power_nl', 'p_k']
+	P_gI = GI_modified * p_gm / p_nl
+	block.put_grid("galaxy_intrinsic_power", "z", z, "k_h", k, "p_k", P_gI)
 
 	print 'Overwriting IA power spectra.'
 
