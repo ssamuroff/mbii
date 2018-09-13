@@ -10,10 +10,14 @@ args = parser.parse_args()
 options = yaml.load(open(args.config))
 
 correlations = options['2pt']['ctypes'].split()
+mode = options['2pt']['mode'].lower()
 
 for correlation in correlations:
-	print 'Processing %s'%correlation 
-	exec('from mbii.pipeline.twopoint import calculate_%s as fns'%correlation)
+	print('Processing %s'%correlation )
+	if (mode=='errors'):
+		exec('from mbii.pipeline.twopoint import calculate_%s_errors as fns'%correlation)
+	else:
+		exec('from mbii.pipeline.twopoint import calculate_%s as fns'%correlation)
 	fns.compute(options)
 
 

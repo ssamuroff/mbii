@@ -5,8 +5,8 @@ import fitsio as fi
 import pylab as plt
 plt.switch_backend('agg')
 #import halotools.mock_observables as pretending
-from mbii.readsubhalo import *
-from mbii.properties import *
+#from mbii.readsubhalo import *
+#from mbii.properties import *
 #import mbii.tests as tests
 import glob
 import numpy as np
@@ -90,7 +90,7 @@ def equalise_binning(data1, data2, rmin, rmax, nbin, tol=1000.):
         R = nmax*1./nmin
         iiter+=1
         rbins = rnew
-        print 'Done iteration ', iiter, R
+        print('Done iteration ', iiter, R)
 
     return np.array(rbins)
     
@@ -115,7 +115,7 @@ def find_equal_bin_edges(x,nbins,w=None):
     for j in xrange(1,nbins):
       # print k[j],r[j-1]
       if k[j]<r[j-1]:
-        print 'Random weight approx. failed - attempting brute force approach'
+        print('Random weight approx. failed - attempting brute force approach')
         fail=True
         break
       w0=np.sum(w[i[ist:k[j]]])
@@ -174,7 +174,7 @@ def find_equal_bin_edges(x,nbins,w=None):
     for j in xrange(1,nbins):
       # print k[j],r[j-1]
       if k[j]<r[j-1]:
-        print 'Random weight approx. failed - attempting brute force approach'
+        print('Random weight approx. failed - attempting brute force approach')
         fail=True
         break
       w0=np.sum(w[i[ist:k[j]]])
@@ -222,9 +222,9 @@ def symmetrise_catalogue3(data=None, seed=4000, mask=None,filename='/home/ssamur
     if mask is None:
         mask = np.ones(data.size).astype(bool)
 
-    print savedir
+    print(savedir)
     if savedir==filename:
-        print "WARNING: target and input file paths are the same"
+        print("WARNING: target and input file paths are the same")
         import pdb ; pdb.set_trace()
 
     group_ids = data['halo_id'][mask]
@@ -251,13 +251,13 @@ def symmetrise_catalogue3(data=None, seed=4000, mask=None,filename='/home/ssamur
         ngal = len(data[select])
         outdat['halo_id'][select] = group_ids[select]
         if ngal<nmin:
-            print 'Skipping halo %d as it contains <%d galaxies'%(g,nmin)
+            print('Skipping halo %d as it contains <%d galaxies'%(g,nmin))
             continue
 
         symmetrised_halo = symmetrise_halo4(data[select], gids=group_ids[select], verbose=True, g=g)
 
         if verbose:
-            print g, ngal
+            print(g, ngal)
 
         for name in outdat.dtype.names:
             outdat[name][select] = symmetrised_halo[name]
@@ -268,7 +268,7 @@ def symmetrise_catalogue3(data=None, seed=4000, mask=None,filename='/home/ssamur
     outfits.write(outdat)
     outfits.close()
 
-    print 'Done'
+    print('Done')
     return 0
 
 def get_wrapped_positions(g, data):
@@ -294,7 +294,7 @@ def get_wrapped_positions(g, data):
 
 def symmetrise_halo4(data, gids=None, verbose=True, g=None):
     if verbose:
-        print 'Will apply one random rotation per subhalo'
+        print('Will apply one random rotation per subhalo')
 
     # Work out the centroid about which to rotate
     import weightedstats as ws
@@ -319,14 +319,14 @@ def symmetrise_halo4(data, gids=None, verbose=True, g=None):
         # We can skip the rotation for central objects
         if (data['most_massive'][i]==1):
             if verbose:
-                print 'skipping object -- it is classified as a central galaxy'
+                print('skipping object -- it is classified as a central galaxy')
             pos = positions.T[i]
             R = np.sqrt(sum(pos*pos))
             rot['rh'][i] = R
             continue
 
         if verbose:
-            print i,
+            print(i,)
 
         # Cartesian galaxy position, relative to the halo centre
         pos = positions.T[i]
@@ -369,7 +369,7 @@ def symmetrise_halo4(data, gids=None, verbose=True, g=None):
 
         if verbose:
          #   print 'ROTATING THROUGH 180 deg'
-            print 'New position (x, y, z) : %3.3f, %3.3f %3.3f'%(xrot,yrot,zrot)
+            print('New position (x, y, z) : %3.3f, %3.3f %3.3f'%(xrot,yrot,zrot))
 
         a3d = np.array([data['a1'][i], data['a2'][i], data['a3'][i]])
         b3d = np.array([data['b1'][i], data['b2'][i], data['b3'][i]])
@@ -405,7 +405,7 @@ def symmetrise_halo4(data, gids=None, verbose=True, g=None):
         # Need to shift the objects left outside the box by the rotation back
         # to the other side if the universe 
         if verbose: 
-            print 'Rotation leaves %d objects outside the simulation box.'%(rot['x'][(rot['x']<0) | (rot['y']<0) | (rot['z']<0)].size)
+            print('Rotation leaves %d objects outside the simulation box.'%(rot['x'][(rot['x']<0) | (rot['y']<0) | (rot['z']<0)].size))
 
         if (rot['x'][i]<0):
             rot['x'][i]+=100
@@ -515,7 +515,7 @@ def evaluate_ellipticity(cat):
 
 def symmetrise_halo3(data, gids=None, verbose=True, g=None):
     if verbose:
-        print 'Will apply one random rotation per subhalo'
+        print('Will apply one random rotation per subhalo')
     np.random.seed(9000)
 
     # Work out the centroid about which to rotate
@@ -546,18 +546,18 @@ def symmetrise_halo3(data, gids=None, verbose=True, g=None):
 
         # We can skip the rotation for central objects
         if (data['central'][i]==1):
-            print 'skipping object -- it is classified as a central galaxy'
+            print('skipping object -- it is classified as a central galaxy')
             continue
 
         if verbose:
-            print i,
+            print(i,)
         # Define a random rotation about each axis
         alpha = 2 * np.pi * (np.random.rand() - 0.5) 
         beta = 2 * np.pi * (np.random.rand() - 0.5) 
         gamma = 2 * np.pi * (np.random.rand() - 0.5)
 
         if verbose:
-            print alpha, beta, gamma
+            print(alpha, beta, gamma)
 
         pos = positions.T[i]
 
@@ -661,9 +661,9 @@ def symmetrise_catalogue2(data=None,mask=None,filename='/home/ssamurof/massive_b
 
     if savedir is None:
         savedir = filename.replace('/subhalo_cat','/cats/symmetrised/subhalo_cat').replace('.fits', '-symmetrised-%d-masswtdmedian-stellarmasscut.fits'%rank)
-    print savedir
+    print(savedir)
     if savedir==filename:
-        print "WARNING: target and input file paths are the same"
+        print("WARNING: target and input file paths are the same")
         import pdb ; pdb.set_trace()
 
     snap = SnapDir(snapshot, root_folder)
@@ -694,7 +694,7 @@ def symmetrise_catalogue2(data=None,mask=None,filename='/home/ssamurof/massive_b
         ngal = len(data[select])
         outdat['group_id'][select] = group_ids[select]
         if ngal<nmin:
-            print 'Skipping halo %d as it contains <%d galaxies'%(g,nmin)
+            print('Skipping halo %d as it contains <%d galaxies'%(g,nmin))
             outdat['subhalo_id'][select] = ident[select]
             continue
 
@@ -703,7 +703,7 @@ def symmetrise_catalogue2(data=None,mask=None,filename='/home/ssamurof/massive_b
         symmetrised_halo = symmetrise_halo2(data[select], gids=group_ids[select], verbose=False, g=g)
 
         if verbose:
-            print g, ngal
+            print(g, ngal)
 
         for name in data.dtype.names:
             outdat[name][select] = symmetrised_halo[name]
@@ -716,7 +716,7 @@ def symmetrise_catalogue2(data=None,mask=None,filename='/home/ssamurof/massive_b
     outfits.write(outdat)
     outfits[-1].write_key('EXTNAME','baryons')
 
-    print 'Done'
+    print('Done')
     return 0
 
 
@@ -733,7 +733,7 @@ def symmetrise_catalogue(data, mask=None, nrot=1000, savedir='/home/ssamurof/mas
     if not replace and (len(files)>0):
         for f in files:
             fits = fi.FITS(f) 
-            print f, len(fits)
+            print(f, len(fits))
             for hdu in fits[1:]:
                 groups_done.append(hdu.read_header()['EXTNAME'])
         groups_done = [g.replace(' ', '') for g in groups_done] 
@@ -758,7 +758,7 @@ def symmetrise_catalogue(data, mask=None, nrot=1000, savedir='/home/ssamurof/mas
         if (not replace) and ('halo%d'%g in groups_done):
             continue
         else:
-            print i, g
+            print(i, g)
 
         select = (group_ids==g)
 
@@ -771,7 +771,7 @@ def symmetrise_catalogue(data, mask=None, nrot=1000, savedir='/home/ssamurof/mas
         outfits.write(symmetrised_halo)
         outfits[-1].write_key('EXTNAME','halo%d'%g)
 
-    print 'Done'
+    print('Done')
     return 0
 
 
@@ -902,7 +902,7 @@ def find_mean_position(g, data):
 
 def symmetrise_halo2(data, gids=None, verbose=True, g=None):
     if verbose:
-        print 'Will apply one random rotation per subhalo'
+        print('Will apply one random rotation per subhalo')
     np.random.seed(9000)
 
     # Work out the centroid about which to rotate
@@ -934,14 +934,14 @@ def symmetrise_halo2(data, gids=None, verbose=True, g=None):
 
     for i in xrange(n):
         if verbose:
-            print i,
+            print(i,)
         # Define a random rotation about each axis
         alpha = 2 * np.pi * (np.random.rand() - 0.5) 
         beta = 2 * np.pi * (np.random.rand() - 0.5) 
         gamma = 2 * np.pi * (np.random.rand() - 0.5)
 
         if verbose:
-            print alpha, beta, gamma
+            print(alpha, beta, gamma)
         #alpha,beta,gamma=np.pi,0,0
 
         # Rotate the position vector
@@ -1005,7 +1005,7 @@ def symmetrise_halo2(data, gids=None, verbose=True, g=None):
 
 def symmetrise_halo(data, nrot=100, gids=None, verbose=True):
     if verbose:
-        print 'Will apply %d random rotations'%nrot
+        print('Will apply %d random rotations'%nrot)
     np.random.seed(9000)
 
     # Work out the centroid about which to rotate
@@ -1027,14 +1027,14 @@ def symmetrise_halo(data, nrot=100, gids=None, verbose=True):
 
     for i in xrange(nrot):
         if verbose:
-            print i,
+            print(i,)
         # Define a random rotation about each axis
         alpha = 2 * np.pi * (np.random.rand() - 0.5) 
         beta = 2 * np.pi * (np.random.rand() - 0.5) 
         gamma = 2 * np.pi * (np.random.rand() - 0.5)
 
         if verbose:
-            print alpha, beta, gamma
+            print(alpha, beta, gamma)
         #alpha,beta,gamma=np.pi,0,0
 
         #import pdb ; pdb.set_trace()
@@ -1090,7 +1090,7 @@ def visualise_halo(data, group=0, mask=None, h=None, axes=['x','y'], cmap='Purpl
         h = snap.readsubhalo()
 
     if mask is None:
-        print 'No mask provided. Using all objects'
+        print('No mask provided. Using all objects')
         mask = np.ones(data.size).astype(bool)
 
     if gid is None:
@@ -1150,7 +1150,7 @@ def add_col(rec, name, arr=[], dtype=None, verbose=False):
 
     if name in rec.dtype.names:
         if verbose:
-            print "Table already has a column called %s"%name
+            print("Table already has a column called %s"%name)
         return rec
 
     if len(arr)==0:
@@ -1174,7 +1174,7 @@ def construct_random_cat(data, mask=None, format='halotools', f=1, fixed_bounds=
     """Construct a catalogue of random points drawn from the same volume as the data provided."""
 
     if f!=1:
-        print 'Random point multiplier: %3.3f'%f
+        print('Random point multiplier: %3.3f'%f)
     if mask is None:
         mask = np.ones(data.size).astype(bool)
     if not fixed_bounds:
@@ -1182,7 +1182,7 @@ def construct_random_cat(data, mask=None, format='halotools', f=1, fixed_bounds=
         ry = (np.random.random(size=int(data['x'][mask].size*f)) - 0.5) * (data['y'][mask].max()-data['y'][mask].min()) + data['y'][mask].mean()
         rz = (np.random.random(size=int(data['x'][mask].size*f)) - 0.5) * (data['z'][mask].max()-data['z'][mask].min()) + data['z'][mask].mean()
     else:
-        print 'Enforcing box edges'
+        print('Enforcing box edges')
         rx = np.random.random(size=int(data['x'][mask].size*f)) * 100000.
         ry = np.random.random(size=int(data['x'][mask].size*f)) * 100000.
         rz = np.random.random(size=int(data['x'][mask].size*f)) * 100000.
@@ -1203,7 +1203,7 @@ def choose_cs_mask(data, ctype):
     if ctype=='a':
         return np.ones(data['central'].size).astype(bool)
 
-    print 'Unrecognised galaxy type:', ctype
+    print('Unrecognised galaxy type:', ctype)
     return None
 
 
@@ -1282,17 +1282,17 @@ def footprint_sub(ra,dec,rasep,decsep,nside,fig, cmap='none'):
 
 def gather_mpi_output(filestring, hdu=-1, name='subhalo_id', save=False):
     files = glob.glob(filestring)
-    print 'Found %d files'%len(files)
+    print('Found %d files'%len(files))
     dat = fi.FITS(files[0])[hdu].read()
     for f in files:
-        print f,
+        print(f,)
         info = fi.FITS(f)[hdu].read()
         mask = (info[name]!=0)
-        print '%d objects'%len(info[name][mask])
+        print('%d objects'%len(info[name][mask]))
         dat[mask] = info[mask]
 
     if save:
-        print 'Saving results as single FITS file.'
+        print('Saving results as single FITS file.')
         out = fi.FITS('bundled_fits.fits', 'rw')
         out.write(dat)
         if type(hdu) is str:
@@ -1306,7 +1306,7 @@ def export_treecorr_output(filename,corr,errors):
     xi = corr.xi
 
     out = np.vstack((R,xi,corr.weight, errors))
-    print 'Saving %s'%filename
+    print('Saving %s'%filename)
     np.savetxt(filename, out.T)
 
 # This script module contains a number of utility functions

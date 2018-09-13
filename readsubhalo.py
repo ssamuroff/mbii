@@ -273,7 +273,7 @@ class SnapDir(object):
             if comp in pdtype.names:
                 dtype = pdtype[comp]
             else:
-                print comp,pdtype.names
+                print(comp,pdtype.names)
                 dtype=self.schema[comp].dtype
             itype = int(type)
         else:
