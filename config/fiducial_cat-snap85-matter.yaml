@@ -30,11 +30,12 @@ errors:
 
 2pt:
     mode : 2pt
-    ctypes : gg ed ee ii_plus_projected gi_plus_projected
-    errors: False
+    shapes_suffix: _dm
+    ctypes : ed ee iiplus_proj giplus_proj 
+    errors: True
     shapes : /Users/hattifattener/Documents/ias/mbii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85.fits
     shapes_symmetrised : /Users/hattifattener/Documents/ias/mbii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85-symmetrised0.fits
-    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/v10/snapshot85/fiducial/
+    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/v10/snapshot85/fiducial/dmshapes
     split : 
     split_val : 1
     binning : log

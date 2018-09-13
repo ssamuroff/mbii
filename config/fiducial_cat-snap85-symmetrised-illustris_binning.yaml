@@ -1,0 +1,46 @@
+
+random_seed : 99000
+root_folder : '/physics/yfeng1/mb2'
+simulation : massiveblackii
+
+catalogues:
+    snapshot : 85
+    shapes_method : inertia_tensor 
+    postprocessed : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm300-nst300-snapshot85.fits
+    shapes_dir : /physics2/ssamurof/massive_black_ii/cats/final2/raw
+
+    cuts :
+        npart_dm : 300 1e60
+        npart_baryon : 300 1e60
+        x : 0. 100000.
+        y : 0. 100000.
+        z : 0. 100000.
+
+    halo_matching : True
+
+symmetrisation:
+    catalogue : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm300-nst300-snapshot85.fits
+    output : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm300-nst300-snapshot85-symmetrised.fits
+    pivot_type : mass
+    central_type : spatial_central
+
+
+errors:
+    nsub : 3
+
+2pt:
+    ctypes : gg ed ee giplus_proj iiplus_proj
+    errors: True
+    shapes : /Users/hattifattener/Documents/ias/mbii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot85-symmetrised0.fits
+    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/v10/snapshot85/symmetrised/illustris_binning/
+    split : spatial_central
+    split_val : 1
+    binning : log
+    rmin : 0.1
+    rmax : 22.
+    nbin : 6
+    rpmin : 0.1
+    rpmax : 22.
+    nrpbin : 6
+    pi_max : 22.
+
