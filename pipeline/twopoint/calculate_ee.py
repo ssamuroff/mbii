@@ -7,22 +7,24 @@ import yaml
 from halotools.mock_observables.alignments import ee_3d
 from mbii.pipeline.twopoint.jackknife import ee as errors 
 
+period={'massiveblackii':100, 'illustris':75}
+
 def compute(options):
-	print 'Shape data : %s'%options['2pt']['shapes']
+	print('Shape data : %s'%options['2pt']['shapes'])
 
 	binning = options['2pt']['binning']
 
 	data = fi.FITS(options['2pt']['shapes'])[-1].read()
 	if 'npart_cut' in options['2pt'].keys():
 		nlow = options['2pt']['npart_cut']
-		print 'Imposing additional cut at npart>%d'%nlow
+		print('Imposing additional cut at npart>%d'%nlow)
 		data = data[(data['npart_dm']>nlow)]
 	else:
 		nlow=-1
 
 	if 'npart_cut_upper' in options['2pt'].keys():
 		nhigh = options['2pt']['npart_cut_upper']
-		print 'Imposing additional cut at npart<%d'%nhigh
+		print('Imposing additional cut at npart<%d'%nhigh)
 		data = data[(data['npart_dm']<nhigh)]
 	else:
 		nhigh = -1
@@ -31,11 +33,11 @@ def compute(options):
 
 	if splitflag is not None:
 		name = options['2pt']['split']
-		print 'Dividing catalogue by %s'%name
+		print('Dividing catalogue by %s'%name)
 		mask = (data[name]>=options['2pt']['split_val'])
-		print '%3.3f percent split'%(data[name][mask].size*100./data[name].size)
+		print('%3.3f percent split'%(data[name][mask].size*100./data[name].size))
 	else:
-		print 'No catalogue split required.'
+		print('No catalogue split required.')
 		mask = np.ones(data.size).astype(bool)
 
 	if binning=='log':
@@ -43,13 +45,13 @@ def compute(options):
 	elif binning=='equal':
 		rbins = util.equalise_binning(data[mask], data[mask], options['2pt']['rmin'], options['2pt']['rmax'], options['2pt']['nbin'])
 
-	print 'Setting up correlations'
+	print('Setting up correlations')
 
 	# don't need randoms here if we know the period of the box
-	print 'Computing correlation functions.'
-	print '11'
+	print('Computing correlation functions.')
+	print('11')
 	cat1 = data[mask]
-	c1c1 = compute_ee(cat1, cat1, options) 
+	c1c1 = compute_ee(cat1, cat1, options, period=period[options['simulation']]) 
 
 	if options['2pt']['errors']:
 		dc1c1 = errors.jackknife(data[mask], data[mask], options, rbins=rbins)
@@ -70,13 +72,13 @@ def compute(options):
 	export_array('%s/EE_corr_11%s.txt'%(options['2pt']['savedir'], suffix), rbins, c1c1, dc1c1)
 
 	if splitflag:
-		print '22'
-		c2c2 = compute_ee(cat2, cat2, options, rbins=rbins)
+		print('22')
+		c2c2 = compute_ee(cat2, cat2, options, rbins=rbins, period=period[options['simulation']])
 	
-		print '12'
-		c1c2 = compute_ee(cat1, cat2, options, rbins=rbins)
-		print '21'
-		c2c1 = compute_ee(cat2, cat1, options, rbins=rbins)
+		print('12')
+		c1c2 = compute_ee(cat1, cat2, options, rbins=rbins, period=period[options['simulation']])
+		print('21')
+		c2c1 = compute_ee(cat2, cat1, options, rbins=rbins, period=period[options['simulation']])
 
 		if options['2pt']['errors']:
 			dc2c2 = errors.jackknife(cat2, cat2, options, rbins=rbins)
@@ -94,9 +96,9 @@ def compute(options):
 		export_array('%s/EE_corr_12%s.txt'%(options['2pt']['savedir'], suffix), rbins, c1c2, dc1c2)
 		export_array('%s/EE_corr_21%s.txt'%(options['2pt']['savedir'], suffix), rbins, c2c1, dc2c1)
 
-		print '00'
+		print('00')
 		cat0 = data
-		c0c0 = compute_ee(cat0, cat0, options, rbins=rbins)
+		c0c0 = compute_ee(cat0, cat0, options, rbins=rbins, period=period[options['simulation']])
 	
 		if options['2pt']['errors']:
 			dc0c0 = errors.jackknife(data, data, options, rbins=rbins)
@@ -105,11 +107,16 @@ def compute(options):
 		export_array('%s/EE_corr_00%s.txt'%(options['2pt']['savedir'], suffix), rbins, c0c0, dc0c0)
 		
 
-	print 'Done'
+	print('Done')
 
 def compute_ee(cat1, cat2, options, period=100., rbins=None):
-	avec2 = np.vstack((cat2['a1'], cat2['a2'], cat2['a3'])).T
-	avec1 = np.vstack((cat1['a1'], cat1['a2'], cat1['a3'])).T
+
+	aname = 'a%d'
+	if ('shapes_suffix' in options['2pt'].keys()):
+		aname+=options['2pt']['shapes_suffix']
+
+	avec2 = np.vstack((cat2[aname%1], cat2[aname%2], cat2[aname%3])).T
+	avec1 = np.vstack((cat1[aname%1], cat1[aname%2], cat1[aname%3])).T
 	pvec1 = np.vstack((cat1['x'], cat1['y'], cat1['z'])).T
 	pvec2 = np.vstack((cat2['x'], cat2['y'], cat2['z'])).T
 
@@ -118,13 +125,16 @@ def compute_ee(cat1, cat2, options, period=100., rbins=None):
 	elif options['2pt']['binning']=='equal' and (rbins is None):
 		rbins = util.equalise_binning(cat1,cat2,options['2pt']['rmin'], options['2pt']['rmax'], options['2pt']['nbin'])
 
-	ee = ee_3d(pvec2, avec2, pvec1, avec1, rbins, period=period, num_threads=1) 
+	mask1=avec1.T[0]!=0.0
+	mask2=avec2.T[0]!=0.0
+
+	ee = ee_3d(pvec2[mask2], avec2[mask2], pvec1[mask1], avec1[mask1], rbins, period=period, num_threads=1) 
 
 	return ee
 
 def export_array(path, edges, result, error):
 	x = np.sqrt(edges[:-1]*edges[1:])
 	out = np.vstack((x, result, error))
-	print 'Exporting to %s'%path
+	print('Exporting to %s'%path)
 	np.savetxt(path, out.T)
 

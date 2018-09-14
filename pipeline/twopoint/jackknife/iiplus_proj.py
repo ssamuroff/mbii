@@ -5,7 +5,7 @@ import argparse
 import yaml
 import copy
 #import mbii.lego_tools as util
-from halotools.mock_observables.alignments import gi_plus_projected
+from halotools.mock_observables.alignments import ii_plus_projected
 
 period={'massiveblackii':100, 'illustris':75}
 
@@ -16,9 +16,9 @@ def jackknife(data1, data2, options, verbosity=0, rpbins=None):
 
 	dx = period[options['simulation']]/nsub
 	if verbosity>0:
-		print('sub-box length : %3.3f h^-1 Mpc'%dx)
+		print( 'sub-box length : %3.3f h^-1 Mpc'%dx)
 
-	GI=[]
+	II=[]
 	nprocessed=0
 
 	for i in range(nsub-1):
@@ -45,23 +45,23 @@ def jackknife(data1, data2, options, verbosity=0, rpbins=None):
 
 				cat1 = data1[mask1]
 				cat2 = data2[mask2]
-				gi = compute_giplus(cat1, cat2, options, rpbins=rpbins, period=period[options['simulation']])
+				ii = compute_iiplus(cat1, cat2, options, period=period[options['simulation']], rpbins=rpbins)
 
-				GI.append(copy.deepcopy(gi))
+				II.append(copy.deepcopy(ii))
 				nprocessed+=1
 				if verbosity>0:
 					print('%d/%d'%(nprocessed,nsub*nsub*nsub))
 
 	if verbosity>0:
 		print('Done subsampling.')
-	gi0 = np.mean(GI, axis=0)
-	R2 = np.sum([(f - gi0)*(f - gi0) for f in GI], axis=0)
+	ii0 = np.mean(II, axis=0)
+	R2 = np.sum([(f - ii0)*(f - ii0) for f in II], axis=0)
 	coeff = (nsub**3 - 1.)/nsub**3
-	dGI = np.sqrt(coeff * R2)
+	dII = np.sqrt(coeff * R2)
 
-	return dGI
+	return dII
 
-def compute_giplus(cat1, cat2, options, period=100., rpbins=None):
+def compute_iiplus(cat1, cat2, options, period=100., rpbins=None):
 
 	aname = 'a%d'
 	ename = 'e%d'
@@ -69,10 +69,12 @@ def compute_giplus(cat1, cat2, options, period=100., rpbins=None):
 		aname+=options['2pt']['shapes_suffix']
 		ename+=options['2pt']['shapes_suffix']
 
-	avec = np.vstack((cat2[aname%1], cat2[aname%2])).T
+	avec1 = np.vstack((cat1[aname%1], cat1[aname%2])).T
+	avec2 = np.vstack((cat2[aname%1], cat2[aname%2])).T
 	pvec1 = np.vstack((cat1['x'], cat1['y'], cat1['z'])).T
 	pvec2 = np.vstack((cat2['x'], cat2['y'], cat2['z'])).T
-	evec = np.sqrt(cat2[ename%1]*cat2[ename%1] + cat2[ename%2]*cat2[ename%2])
+	evec1 = np.sqrt(cat1[ename%1]*cat1[ename%1] + cat1[ename%2]*cat1[ename%2])
+	evec2 = np.sqrt(cat2[ename%1]*cat2[ename%1] + cat2[ename%2]*cat2[ename%2])
 
 	if (options['2pt']['binning']=='log') and (rpbins is None):
 		rpbins = np.logspace(np.log10(options['2pt']['rpmin']), np.log10(options['2pt']['rpmax']), options['2pt']['nrpbin'])
@@ -80,8 +82,9 @@ def compute_giplus(cat1, cat2, options, period=100., rpbins=None):
 		rpbins = util.equalise_binning(options['2pt']['rpmin'], options['2pt']['rpmax'], options['2pt']['nbin'])
 	pi_max = options['2pt']['pi_max']
 
-	mask2=avec.T[0]!=0.0
+	mask1=avec1.T[0]!=0.0
+	mask2=avec2.T[0]!=0.0
 
-	gip = gi_plus_projected(pvec2[mask2], avec[mask2], evec[mask2], pvec1, rpbins, pi_max, period=period, num_threads=1) 
+	gip = ii_plus_projected(pvec2[mask2], avec2[mask2], evec2[mask2], pvec1[mask1], avec1[mask1], evec1[mask1], rpbins, pi_max, period=period, num_threads=1) 
 
 	return gip

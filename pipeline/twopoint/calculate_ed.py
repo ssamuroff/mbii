@@ -7,43 +7,37 @@ import yaml
 from halotools.mock_observables.alignments import ed_3d
 from mbii.pipeline.twopoint.jackknife import ed as errors
 
+period={'massiveblackii':100, 'illustris':75}
 
 def compute(options):
-	print 'Shape data : %s'%options['2pt']['shapes']
+	print('Shape data : %s'%options['2pt']['shapes'])
 
 	binning = options['2pt']['binning']
 
 	data = fi.FITS(options['2pt']['shapes'])[-1].read()
 	if 'npart_cut' in options['2pt'].keys():
 		nlow = options['2pt']['npart_cut']
-		print 'Imposing additional cut at npart>%d'%nlow
+		print('Imposing additional cut at npart>%d'%nlow)
 		data = data[(data['npart_dm']>nlow)]
 	else:
 		nlow=-1
 
 	if 'npart_cut_upper' in options['2pt'].keys():
 		nhigh = options['2pt']['npart_cut_upper']
-		print 'Imposing additional cut at npart<%d'%nhigh
+		print('Imposing additional cut at npart<%d'%nhigh)
 		data = data[(data['npart_dm']<nhigh)]
 	else:
 		nhigh = -1
-	#print 'Excluding '
-	#dx = abs(data['x']-data['x0'])
-	#dy = abs(data['y']-data['y0'])
-	#dz = abs(data['z']-data['z0'])
-	#cflag = (data['most_massive']==1)
-	#mask = cflag & ((dx>50) | (dy>50) | (dz>50))
-	#data = data[np.invert(mask)]
 
 	splitflag=options['2pt']['split']
 
 	if splitflag is not None:
 		name = options['2pt']['split']
-		print 'Dividing catalogue by %s'%name
+		print('Dividing catalogue by %s'%name)
 		mask = (data[name]>=options['2pt']['split_val'])
-		print '%3.3f percent split'%(data[name][mask].size*100./data[name].size)
+		print('%3.3f percent split'%(data[name][mask].size*100./data[name].size))
 	else:
-		print 'No catalogue split required.'
+		print('No catalogue split required.')
 		mask = np.ones(data.size).astype(bool)
 
 	if binning=='log':
@@ -51,18 +45,11 @@ def compute(options):
 	elif binning=='equal':
 		rbins = util.equalise_binning(data[mask], data[mask], options['2pt']['rmin'], options['2pt']['rmax'], options['2pt']['nbin'])
 
-	print 'Setting up correlations'
+	print('Setting up correlations')
+	cat1 = data[mask]
 
 	# don't need randoms here if we know the period of the box
-	print 'Computing correlation functions.'
-	print '11'
-	cat1 = data[mask]
-	c1c1 = compute_ed(cat1, cat1, options) 
-
-	if options['2pt']['errors']:
-		dc1c1 = errors.jackknife(data[mask], data[mask], options, rbins=rbins)
-	else:
-		dc1c1 = np.zeros(c1c1.size)
+	print('Computing correlation functions.')
 
 	if splitflag:
 		cat2 = data[np.invert(mask)]
@@ -75,17 +62,15 @@ def compute(options):
 	if (nhigh>0):
 		suffix+='-ndm_part_high%d'%nhigh
 
-	export_array('%s/ED_corr_11%s.txt'%(options['2pt']['savedir'], suffix), rbins, c1c1, dc1c1)
-
 	if splitflag:
-		print '21'
-		c2c1 = compute_ed(cat2, cat1, options, rbins=rbins)
+		print('21')
+		c2c1 = compute_ed(cat2, cat1, options, rbins=rbins, period=period[options['simulation']])
 
-		print '22'
-		c2c2 = compute_ed(cat2, cat2, options, rbins=rbins)
+		print('22')
+		c2c2 = compute_ed(cat2, cat2, options, rbins=rbins, period=period[options['simulation']])
 	
-		print '12'
-		c1c2 = compute_ed(cat1, cat2, options, rbins=rbins)
+		print('12')
+		c1c2 = compute_ed(cat1, cat2, options, rbins=rbins, period=period[options['simulation']])
 		
 
 		if options['2pt']['errors']:
@@ -103,22 +88,38 @@ def compute(options):
 		export_array('%s/ED_corr_12%s.txt'%(options['2pt']['savedir'], suffix), rbins, c1c2, dc1c2)
 		export_array('%s/ED_corr_21%s.txt'%(options['2pt']['savedir'], suffix), rbins, c2c1, dc2c1)
 
-		print '00'
-		cat0 = data
-		c0c0 = compute_ed(cat0, cat0, options, rbins=rbins)
-	
+		print('11')
+		c1c1 = compute_ed(cat1, cat1, options, period=period[options['simulation']]) 
+
 		if options['2pt']['errors']:
-			dc0c0 = errors.jackknife(data, data, options, rbins=rbins)
+			dc1c1 = errors.jackknife(data[mask], data[mask], options, rbins=rbins)
 		else:
-			dc0c0 = np.zeros(c0c0.xi.size)
-		export_array('%s/ED_corr_00%s.txt'%(options['2pt']['savedir'], suffix), rbins, c0c0, dc0c0)
+			dc1c1 = np.zeros(c1c1.size)
+
+		export_array('%s/ED_corr_11%s.txt'%(options['2pt']['savedir'], suffix), rbins, c1c1, dc1c1)
+
+	print('00')
+	cat0 = data
+	c0c0 = compute_ed(cat0, cat0, options, rbins=rbins, period=period[options['simulation']])
+	
+	if options['2pt']['errors']:
+		dc0c0 = errors.jackknife(data, data, options, rbins=rbins)
+	else:
+		dc0c0 = np.zeros(c0c0.size)
+	export_array('%s/ED_corr_00%s.txt'%(options['2pt']['savedir'], suffix), rbins, c0c0, dc0c0)
 		
 
-	print 'Done'
+	print('Done')
 
 def compute_ed(cat1, cat2, options, period=100., rbins=None):
-	avec2 = np.vstack((cat2['a1'], cat2['a2'], cat2['a3'])).T
-	avec1 = np.vstack((cat1['a1'], cat1['a2'], cat1['a3'])).T
+
+	aname = 'a%d'
+	if ('shapes_suffix' in options['2pt'].keys()):
+		aname+=options['2pt']['shapes_suffix']
+		print('Using column %s'%aname)
+
+	avec2 = np.vstack((cat2[aname%1], cat2[aname%2], cat2[aname%3])).T
+	avec1 = np.vstack((cat1[aname%1], cat1[aname%2], cat1[aname%3])).T
 	pvec1 = np.vstack((cat1['x'], cat1['y'], cat1['z'])).T
 	pvec2 = np.vstack((cat2['x'], cat2['y'], cat2['z'])).T
 
@@ -127,32 +128,36 @@ def compute_ed(cat1, cat2, options, period=100., rbins=None):
 	elif options['2pt']['binning']=='equal' and (rbins is None):
 		rbins = util.equalise_binning(cat1,cat2,options['2pt']['rmin'], options['2pt']['rmax'], options['2pt']['nbin'])
 
-	ed = ed_3d(pvec2, avec2, pvec1, rbins, period=period, num_threads=1) 
+	mask1=avec1.T[0]!=0.0
+	mask2=avec2.T[0]!=0.0
+
+	ed = ed_3d(pvec2[mask2], avec2[mask2], pvec1[mask1], rbins, period=period, num_threads=1) 
+
 
 	return ed
 
 def export_array(path, edges, result, error):
 	x = np.sqrt(edges[:-1]*edges[1:])
 	out = np.vstack((x, result, error))
-	print 'Exporting to %s'%path
+	print('Exporting to %s'%path)
 	np.savetxt(path, out.T)
 
 def compute_treecorr(options):
-	print 'Shape data : %s'%options['output']
+	print('Shape data : %s'%options['output'])
 	data = fi.FITS(options['2pt']['shapes'])[-1].read()
 
 	splitflag=options['2pt']['split']
 
 	if splitflag is not None:
 		name = options['2pt']['split']
-		print 'Dividing catalogue by %s'%name
+		print('Dividing catalogue by %s'%name)
 		mask = (data[name]>=options['2pt']['split_val'])
-		print '%3.3f percent split'%(data[name][mask].size*100./data[name].size)
+		print('%3.3f percent split'%(data[name][mask].size*100./data[name].size))
 	else:
-		print 'No catalogue split required.'
+		print('No catalogue split required.')
 		mask = np.ones(data.size).astype(bool)
 
-	print 'Setting up correlations'
+	print('Setting up correlations')
 	cat1 = treecorr.Catalog(x=data['x'][mask], y=data['y'][mask], z=data['z'][mask], a=data['a1'][mask], b=data['a2'][mask], c=data['a3'][mask])
 	c1c1 = treecorr.NVCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=options['2pt']['nbin'])
 
@@ -171,13 +176,13 @@ def compute_treecorr(options):
 	else:
 		suffix=''
 
-	print 'Computing correlation functions.'
-	print '11'
+	print('Computing correlation functions.')
+	print('11')
 	c1c1.process(cat1,cat1)
 	export_treecorr_output('%s/ED_corr_11%s.txt'%(options['2pt']['savedir'], suffix), c1c1, dc1c1)
 
 	if splitflag:
-		print '22'
+		print('22')
 		c2c2.process(cat2,cat2)
 		if options['2pt']['errors']:
 			dc2c2 = errors.jackknife(data[np.invert(mask)], data[np.invert(mask)], options)
@@ -190,9 +195,9 @@ def compute_treecorr(options):
 			dc1c2 = np.zeros(c1c2.xi.size)
 			dc2c1 = np.zeros(c2c1.xi.size)
 
-		print '12'
+		print('12')
 		c1c2.process(cat1,cat2)
-		print '12'
+		print('12')
 		c2c1.process(cat2,cat1)
 
 		export_treecorr_output('%s/ED_corr_22%s.txt'%(options['2pt']['savedir'], suffix), c2c2, dc2c2)
@@ -209,7 +214,7 @@ def compute_treecorr(options):
 		dc0c0 = np.zeros(c0c0.xi.size)
 	export_treecorr_output('%s/ED_corr_00%s.txt'%(options['2pt']['savedir'], suffix), c0c0, dc0c0)		
 
-	print 'Done'
+	print('Done')
 
 def export_treecorr_output(filename,corr,errors):
     R = np.exp(corr.logr)
@@ -217,6 +222,6 @@ def export_treecorr_output(filename,corr,errors):
     xi = corr.xi
 
     out = np.vstack((R,xi,corr.weight, errors))
-    print 'Saving %s'%filename
+    print('Saving %s'%filename)
     np.savetxt(filename, out.T)
 

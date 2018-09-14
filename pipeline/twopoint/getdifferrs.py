@@ -34,7 +34,7 @@ for name in ['e1','e2','a1','a2','a3']:
 	p3[name]=p3['%s_dm'%name]
 	p3_sym[name]=p3_sym['%s_dm'%name]
 
-correlations = ['ed', 'ee', 'gi_plus_projected', 'ii_plus_projected']
+correlations = ['gi_plus_projected', 'ii_plus_projected', 'ed', 'ee']
 for correlation in correlations:
 	print('Correlation : %s'%correlation)
 
