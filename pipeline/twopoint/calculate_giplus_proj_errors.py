@@ -48,6 +48,9 @@ def compute(options, binning):
 
 	print('Setting up correlations')
 
+	# don't need randoms here if we know the period of the box
+	print('Computing correlation functions.')
+	
 	if splitflag:
 		suffix = '_splitby%s'%options['2pt']['split']
 	else:
@@ -58,35 +61,33 @@ def compute(options, binning):
 	if (nhigh>0):
 		suffix+='-ndm_part_high%d'%nhigh
 
-	# don't need randoms here if we know the period of the box
-	print('Computing correlation functions.')
-
 	if splitflag:
+
+		print('11')
 		cat1 = data[mask]
 		cat1_sym = data_sym[mask]
 		cat2 = data[np.invert(mask)]
 		cat2_sym = data_sym[np.invert(mask)]
 
-		print('11')
-		F11,R11 = errors.jackknife('ed', cat1, cat1, cat1_sym, cat1_sym, options, nbins=binning)
-		export_array('%s/ED_var_11%s.txt'%(options['2pt']['savedir'], suffix), rbins, F11, R11)
-		
+		F11,R11 = errors.jackknife('gi_plus_projected', cat1, cat1, cat1_sym, cat1_sym, options, nbins=binning)
+		export_array('%s/GIplus_proj_var_11%s.txt'%(options['2pt']['savedir'], suffix), rbins, F11, R11)
+
 		print('22')
-		F22,R22 = errors.jackknife('ed', cat2, cat2, cat2_sym, cat2_sym, options, nbins=binning)
-		export_array('%s/ED_var_22%s.txt'%(options['2pt']['savedir'], suffix), rbins, F22, R22)
+		F22,R22 = errors.jackknife('gi_plus_projected', cat2, cat2, cat2_sym, cat2_sym, options, nbins=binning)
 	
 		print('12')
-		F12,R12 = errors.jackknife('ed', cat1, cat2, cat1_sym, cat2_sym, options, nbins=binning)
+		F12,R12 = errors.jackknife('gi_plus_projected', cat1, cat2, cat1_sym, cat2_sym, options, nbins=binning)
 		print('21')
-		F21,R21 = errors.jackknife('ed', cat2, cat1, cat2_sym, cat1_sym, options, nbins=binning)
+		F21,R21 = errors.jackknife('gi_plus_projected', cat2, cat1, cat2_sym, cat1_sym, options, nbins=binning)
 
-		export_array('%s/ED_var_12%s.txt'%(options['2pt']['savedir'], suffix), rbins, F12, R12)
-		export_array('%s/ED_var_21%s.txt'%(options['2pt']['savedir'], suffix), rbins, F21, R21)
+		export_array('%s/GIplus_proj_var_22%s.txt'%(options['2pt']['savedir'], suffix), rbins, F22, R22)
+		export_array('%s/GIplus_proj_var_12%s.txt'%(options['2pt']['savedir'], suffix), rbins, F12, R12)
+		export_array('%s/GIplus_proj_var_21%s.txt'%(options['2pt']['savedir'], suffix), rbins, F21, R21)
 
 	print('00')
 	cat0 = data
-	F00,R00 = errors.jackknife('ed', cat0, cat0, cat0_sym, cat0_sym, options, nbins=binning)
-	export_array('%s/ED_var_00%s.txt'%(options['2pt']['savedir'], suffix), rbins, F00, R00)
+	F00,R00 = errors.jackknife('gi_plus_projected', cat0, cat0, cat0_sym, cat0_sym, options, nbins=binning)
+	export_array('%s/GIplus_proj_var_00%s.txt'%(options['2pt']['savedir'], suffix), rbins, F00, R00)
 
 	print('Done')
 

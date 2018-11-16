@@ -8,10 +8,8 @@ from mbii.pipeline.twopoint.jackknife import multipurpose_errors as errors
 
 period={'massiveblackii':100, 'illustris':75}
 
-def compute(options):
+def compute(options, binning):
 	print('Shape data : %s'%options['2pt']['shapes'])
-
-	binning = options['2pt']['binning']
 
 	data = fi.FITS(options['2pt']['shapes'])[-1].read()
 	data_sym = fi.FITS(options['2pt']['shapes_symmetrised'])[-1].read()
@@ -43,23 +41,17 @@ def compute(options):
 		print('No catalogue split required.')
 		mask = np.ones(data.size).astype(bool)
 
-	if binning=='log':
-		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), options['2pt']['nbin']+1)
-	elif binning=='equal':
-		rbins = util.equalise_binning(data[mask], data[mask], options['2pt']['rmin'], options['2pt']['rmax'], options['2pt']['nbin'])
+	if options['2pt']['binning']=='log':
+		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), binning+1)
+	elif options['2pt']['binning']=='equal':
+		rbins = util.equalise_binning(data[mask], data[mask], options['2pt']['rmin'], options['2pt']['rmax'], binning+1)
 
 	print('Setting up correlations')
 
 	# don't need randoms here if we know the period of the box
 	print('Computing correlation functions.')
-	print('11')
-	cat1 = data[mask]
-	cat1_sym = data_sym[mask]
-	F11,R11 = errors.jackknife('gg', cat1, cat1, cat1_sym, cat1_sym, options) 
 
 	if splitflag:
-		cat2 = data[np.invert(mask)]
-		cat2_sym = data_sym[np.invert(mask)]
 		suffix = '_splitby%s'%options['2pt']['split']
 	else:
 		suffix=''
@@ -69,25 +61,33 @@ def compute(options):
 	if (nhigh>0):
 		suffix+='-ndm_part_high%d'%nhigh
 
-	export_array('%s/gg_var_11%s.txt'%(options['2pt']['savedir'], suffix), rbins, F11, R11)
-
 	if splitflag:
+
+		print('11')
+		cat1 = data[mask]
+		cat1_sym = data_sym[mask]
+		F11,R11 = errors.jackknife('gg', cat1, cat1, cat1_sym, cat1_sym, options, nbins=binning) 
+		export_array('%s/gg_var_11%s.txt'%(options['2pt']['savedir'], suffix), rbins, F11, R11)
+
+		cat2 = data[np.invert(mask)]
+		cat2_sym = data_sym[np.invert(mask)]
 		print('22')
-		F22,R22 = errors.jackknife('gg', cat2, cat2, cat2_sym, cat2_sym, options, rbins=rbins)
+		F22,R22 = errors.jackknife('gg', cat2, cat2, cat2_sym, cat2_sym, options, nbins=binning)
+		export_array('%s/EE_var_22%s.txt'%(options['2pt']['savedir'], suffix), rbins, F22, R22)
 	
 		print('12')
-		F12,R12 = errors.jackknife('gg', cat1, cat2, cat1_sym, cat2_sym, options, rbins=rbins)
+		F12,R12 = errors.jackknife('gg', cat1, cat2, cat1_sym, cat2_sym, options, nbins=binning)
 		print('21')
-		F21,R21 = errors.jackknife('gg', cat2, cat1, cat2_sym, cat1_sym, options, rbins=rbins)
+		F21,R21 = errors.jackknife('gg', cat2, cat1, cat2_sym, cat1_sym, options, nbins=binning)
 
-		export_array('%s/EE_var_22%s.txt'%(options['2pt']['savedir'], suffix), rbins, F22, R22)
 		export_array('%s/gg_var_12%s.txt'%(options['2pt']['savedir'], suffix), rbins, F12, R12)
 		export_array('%s/gg_var_21%s.txt'%(options['2pt']['savedir'], suffix), rbins, F21, R21)
 
-		print('00')
-		cat0 = data
-		F00,R00 = errors.jackknife('gg', cat0, cat0, cat0_sym, cat0_sym, options, rbins=rbins, period=period[options['simulation']])
-		export_array('%s/gg_var_00%s.txt'%(options['2pt']['savedir'], suffix), rbins, F00, R00)
+	print('00')
+	cat0 = data
+	cat0_sym = data_sym
+	F00,R00 = errors.jackknife('gg', cat0, cat0, cat0_sym, cat0_sym, options, nbins=binning)
+	export_array('%s/gg_var_00%s.txt'%(options['2pt']['savedir'], suffix), rbins, F00, R00)
 
 	print('Done')
 

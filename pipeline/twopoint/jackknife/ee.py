@@ -9,12 +9,12 @@ from halotools.mock_observables.alignments import ee_3d
 
 period={'massiveblackii':100, 'illustris':75}
 
-def jackknife(data1, data2, options, verbosity=0, rbins=None):
+def jackknife(data1, data2, options, verbosity=0, rbins=None, nbins=6):
 	nsub = options['errors']['nsub']
 	if verbosity>0:
 		print('Calculating jackknife errorbars - %dx%d subvolumes'%(nsub,nsub) )
 
-	dx = 100./nsub
+	dx = period[options['simulation']]/nsub
 	if verbosity>0:
 		print('sub-box length : %3.3f h^-1 Mpc'%dx)
 
@@ -45,7 +45,7 @@ def jackknife(data1, data2, options, verbosity=0, rbins=None):
 
 				cat1 = data1[mask1]
 				cat2 = data2[mask2]
-				ee = compute_ee(cat1, cat2, options, period=period[options['simulation']], rbins=rbins)
+				ee = compute_ee(cat1, cat2, options, period=period[options['simulation']], rbins=rbins, nbins=nbins)
 
 				EE.append(copy.deepcopy(ee))
 				nprocessed+=1
@@ -54,7 +54,6 @@ def jackknife(data1, data2, options, verbosity=0, rbins=None):
 
 	if verbosity>0:
 		print('Done subsampling.')
-	#import pdb ; pdb.set_trace()
 	ee0 = np.mean(EE, axis=0)
 	R2 = np.sum([(f - ee0)*(f - ee0) for f in EE], axis=0)
 	coeff = (nsub**3 - 1.)/nsub**3
@@ -62,7 +61,7 @@ def jackknife(data1, data2, options, verbosity=0, rbins=None):
 
 	return dEE
 
-def compute_ee(cat1, cat2, options, period=100., rbins=None):
+def compute_ee(cat1, cat2, options, period=100., rbins=None, nbins=6):
 
 	aname = 'a%d'
 	ename = 'e%d'
@@ -77,9 +76,9 @@ def compute_ee(cat1, cat2, options, period=100., rbins=None):
 	evec = np.sqrt(cat2[ename%1]*cat2[ename%1] + cat2[ename%2]*cat2[ename%2])
 
 	if (options['2pt']['binning']=='log') and (rbins is None):
-		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), options['2pt']['nbin'])
+		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), nbins+1)
 	elif (options['2pt']['binning']=='equal') and (rbins is None):
-		rbins = util.equalise_binning(options['2pt']['rmin'], options['2pt']['rmax'], options['2pt']['nbin'])
+		rbins = util.equalise_binning(options['2pt']['rmin'], options['2pt']['rmax'], nbins+1)
 
 	mask1=avec1.T[0]!=0.0
 	mask2=avec2.T[0]!=0.0

@@ -9,7 +9,7 @@ from halotools.mock_observables.alignments import ii_plus_projected
 
 period={'massiveblackii':100, 'illustris':75}
 
-def jackknife(data1, data2, options, verbosity=0, rpbins=None):
+def jackknife(data1, data2, options, verbosity=0, rpbins=None, nbins=6):
 	nsub = options['errors']['nsub']
 	if verbosity>0:
 		print('Calculating jackknife errorbars - %dx%d subvolumes'%(nsub,nsub) )
@@ -45,7 +45,7 @@ def jackknife(data1, data2, options, verbosity=0, rpbins=None):
 
 				cat1 = data1[mask1]
 				cat2 = data2[mask2]
-				ii = compute_iiplus(cat1, cat2, options, period=period[options['simulation']], rpbins=rpbins)
+				ii = compute_iiplus(cat1, cat2, options, period=period[options['simulation']], rpbins=rpbins, nbins=nbins)
 
 				II.append(copy.deepcopy(ii))
 				nprocessed+=1
@@ -61,7 +61,7 @@ def jackknife(data1, data2, options, verbosity=0, rpbins=None):
 
 	return dII
 
-def compute_iiplus(cat1, cat2, options, period=100., rpbins=None):
+def compute_iiplus(cat1, cat2, options, period=100., rpbins=None, nbins=6):
 
 	aname = 'a%d'
 	ename = 'e%d'
@@ -77,9 +77,9 @@ def compute_iiplus(cat1, cat2, options, period=100., rpbins=None):
 	evec2 = np.sqrt(cat2[ename%1]*cat2[ename%1] + cat2[ename%2]*cat2[ename%2])
 
 	if (options['2pt']['binning']=='log') and (rpbins is None):
-		rpbins = np.logspace(np.log10(options['2pt']['rpmin']), np.log10(options['2pt']['rpmax']), options['2pt']['nrpbin'])
+		rpbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), nbins+1)
 	elif (options['2pt']['binning']=='equal') and (rpbins is None):
-		rpbins = util.equalise_binning(options['2pt']['rpmin'], options['2pt']['rpmax'], options['2pt']['nbin'])
+		rpbins = util.equalise_binning(options['2pt']['rmin'], options['2pt']['rpmax'], nbins+1)
 	pi_max = options['2pt']['pi_max']
 
 	mask1=avec1.T[0]!=0.0

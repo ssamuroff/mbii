@@ -8,12 +8,12 @@ import copy
 
 periods={'massiveblackii':100, 'illustris':75}
 
-def jackknife(data1, data2, options, verbosity=0):
+def jackknife(data1, data2, options, verbosity=0, nbins=6):
 	nsub = options['errors']['nsub']
 	if verbosity>0:
 		print('Calculating jackknife errorbars - %dx%d subvolumes'%(nsub,nsub) )
 
-	dx = 100./nsub
+	dx = period[options['simulation']]/nsub
 	if verbosity>0:
 		print('sub-box length : %3.3f h^-1 Mpc'%dx)
 
@@ -44,11 +44,11 @@ def jackknife(data1, data2, options, verbosity=0):
 
 				cat1 = treecorr.Catalog(x=data1['x'][mask1], y=data1['y'][mask1], z=data1['z'][mask1])
 				cat2 = treecorr.Catalog(x=data2['x'][mask2], y=data2['y'][mask2], z=data2['z'][mask2])
-				gg = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=options['2pt']['nbin'])
+				gg = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=nbins)
 
 				gg.process(cat1,cat2)
 				rcat11, rcat12, rcat21, rcat22 = randoms(cat1, cat2, period=periods[options['simulation']])
-				gg = finish_nn(gg, cat1, cat1, rcat11, rcat12, options)
+				gg = finish_nn(gg, cat1, cat1, rcat11, rcat12, options, nbins)
 
 				vec.append(copy.deepcopy(gg.xi))
 				gg.clear()
@@ -78,14 +78,14 @@ def randoms(cat1, cat2, period=100):
 
 	return rcat11, rcat12, rcat21, rcat22
 
-def finish_nn(corr, cat1, cat2, rcat1, rcat2, options):
+def finish_nn(corr, cat1, cat2, rcat1, rcat2, options, nbins):
 
 	if cat2 is None:
 		cat2 = cat1
 
-	rr = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=options['2pt']['nbin'])
-	rn = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=options['2pt']['nbin'])
-	nr = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=options['2pt']['nbin'])
+	rr = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=nbins)
+	rn = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=nbins)
+	nr = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=nbins)
 
 	# Do the pair counting
 	print('Processing randoms',)

@@ -9,10 +9,10 @@ from mbii.pipeline.twopoint.jackknife import ed as errors
 
 period={'massiveblackii':100, 'illustris':75}
 
-def compute(options):
+def compute(options, binning):
 	print('Shape data : %s'%options['2pt']['shapes'])
 
-	binning = options['2pt']['binning']
+	#binning = options['2pt']['binning']
 
 	data = fi.FITS(options['2pt']['shapes'])[-1].read()
 	if 'npart_cut' in options['2pt'].keys():
@@ -40,19 +40,18 @@ def compute(options):
 		print('No catalogue split required.')
 		mask = np.ones(data.size).astype(bool)
 
-	if binning=='log':
-		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), options['2pt']['nbin'])
-	elif binning=='equal':
-		rbins = util.equalise_binning(data[mask], data[mask], options['2pt']['rmin'], options['2pt']['rmax'], options['2pt']['nbin'])
+	if options['2pt']['binning']=='log':
+		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), binning+1)
+	elif options['2pt']['binning']=='equal':
+		rbins = util.equalise_binning(data[mask], data[mask], options['2pt']['rmin'], options['2pt']['rmax'], binning+1)
 
 	print('Setting up correlations')
-	cat1 = data[mask]
+	
 
 	# don't need randoms here if we know the period of the box
 	print('Computing correlation functions.')
 
 	if splitflag:
-		cat2 = data[np.invert(mask)]
 		suffix = '_splitby%s'%options['2pt']['split']
 	else:
 		suffix=''
@@ -63,20 +62,27 @@ def compute(options):
 		suffix+='-ndm_part_high%d'%nhigh
 
 	if splitflag:
+		cat1 = data[mask]
+		cat2 = data[np.invert(mask)]
+
+		print('11')
+		c1c1 = compute_ed(cat1, cat1, options, period=period[options['simulation']], nbins=binning) 
+
 		print('21')
-		c2c1 = compute_ed(cat2, cat1, options, rbins=rbins, period=period[options['simulation']])
+		c2c1 = compute_ed(cat2, cat1, options, rbins=rbins, period=period[options['simulation']], nbins=binning)
 
 		print('22')
-		c2c2 = compute_ed(cat2, cat2, options, rbins=rbins, period=period[options['simulation']])
+		c2c2 = compute_ed(cat2, cat2, options, rbins=rbins, period=period[options['simulation']], nbins=binning)
 	
 		print('12')
-		c1c2 = compute_ed(cat1, cat2, options, rbins=rbins, period=period[options['simulation']])
+		c1c2 = compute_ed(cat1, cat2, options, rbins=rbins, period=period[options['simulation']], nbins=binning)
 		
 
 		if options['2pt']['errors']:
-			dc2c2 = errors.jackknife(cat2, cat2, options, rbins=rbins)
-			dc1c2 = errors.jackknife(cat1, cat2, options, rbins=rbins)
-			dc2c1 = errors.jackknife(cat2, cat1, options, rbins=rbins)
+			dc1c1 = errors.jackknife(data[mask], data[mask], options, nbins=binning)
+			dc2c2 = errors.jackknife(cat2, cat2, options, nbins=binning)
+			dc1c2 = errors.jackknife(cat1, cat2, options, nbins=binning)
+			dc2c1 = errors.jackknife(cat2, cat1, options, nbins=binning)
 
 		else:
 			dc1c1 = np.zeros(c1c1.size)
@@ -84,26 +90,17 @@ def compute(options):
 			dc1c2 = np.zeros(c1c2.size)
 			dc2c1 = np.zeros(c2c1.size)
 
+		export_array('%s/ED_corr_11%s.txt'%(options['2pt']['savedir'], suffix), rbins, c1c1, dc1c1)
 		export_array('%s/ED_corr_22%s.txt'%(options['2pt']['savedir'], suffix), rbins, c2c2, dc2c2)
 		export_array('%s/ED_corr_12%s.txt'%(options['2pt']['savedir'], suffix), rbins, c1c2, dc1c2)
 		export_array('%s/ED_corr_21%s.txt'%(options['2pt']['savedir'], suffix), rbins, c2c1, dc2c1)
 
-		print('11')
-		c1c1 = compute_ed(cat1, cat1, options, period=period[options['simulation']]) 
-
-		if options['2pt']['errors']:
-			dc1c1 = errors.jackknife(data[mask], data[mask], options, rbins=rbins)
-		else:
-			dc1c1 = np.zeros(c1c1.size)
-
-		export_array('%s/ED_corr_11%s.txt'%(options['2pt']['savedir'], suffix), rbins, c1c1, dc1c1)
-
 	print('00')
 	cat0 = data
-	c0c0 = compute_ed(cat0, cat0, options, rbins=rbins, period=period[options['simulation']])
+	c0c0 = compute_ed(cat0, cat0, options, rbins=rbins, period=period[options['simulation']], nbins=binning)
 	
 	if options['2pt']['errors']:
-		dc0c0 = errors.jackknife(data, data, options, rbins=rbins)
+		dc0c0 = errors.jackknife(data, data, options, nbins=binning)
 	else:
 		dc0c0 = np.zeros(c0c0.size)
 	export_array('%s/ED_corr_00%s.txt'%(options['2pt']['savedir'], suffix), rbins, c0c0, dc0c0)
@@ -111,7 +108,7 @@ def compute(options):
 
 	print('Done')
 
-def compute_ed(cat1, cat2, options, period=100., rbins=None):
+def compute_ed(cat1, cat2, options, period=100., rbins=None, nbins=6):
 
 	aname = 'a%d'
 	if ('shapes_suffix' in options['2pt'].keys()):
@@ -124,9 +121,9 @@ def compute_ed(cat1, cat2, options, period=100., rbins=None):
 	pvec2 = np.vstack((cat2['x'], cat2['y'], cat2['z'])).T
 
 	if options['2pt']['binning']=='log' and (rbins is None):
-		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), options['2pt']['nbin'])
+		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), nbins+1)
 	elif options['2pt']['binning']=='equal' and (rbins is None):
-		rbins = util.equalise_binning(cat1,cat2,options['2pt']['rmin'], options['2pt']['rmax'], options['2pt']['nbin'])
+		rbins = util.equalise_binning(cat1,cat2,options['2pt']['rmin'], options['2pt']['rmax'], nbins+1)
 
 	mask1=avec1.T[0]!=0.0
 	mask2=avec2.T[0]!=0.0

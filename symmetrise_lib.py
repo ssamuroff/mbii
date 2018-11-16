@@ -8,6 +8,31 @@ import mbii.lego_tools as utils
 from numpy.core.records import fromarrays
 
 
+def parse_binning(options):
+    """Takes a set of configuration settings, extracts the 2pt binning info
+    and converts it into a dictionary."""
+
+    corrs = options['2pt']['ctypes'].split()
+    nbins = options['2pt']['nbin']
+
+    bindict = {}
+
+    # If one number is given then fix all 2pt measurements to use that
+    # otherwise assume the bin numbers follow the same ordering as the 
+    # correlation types
+    if isinstance(nbins,int):
+        n0 = [nbins]*len(corrs)     
+    else:
+        n0 = nbins.split()
+
+    for n,c in zip(n0,corrs):
+        bindict[c] = int(n)
+        print('Will use %d bins for %s'%(int(n),c))
+
+    return bindict
+
+
+
 def symmetrise_catalogue3(data=None, seed=4000, mask=None, filename='/home/ssamurof/massive_black_ii/subhalo_cat-nthreshold5.fits', pivot='mass', central='spatial_central', snapshot=85, savedir=None, replace=False, verbose=True, nmin=0, rank=0, size=1):
     """Takes a catalogue of subhalos with orientations, positions and host halo identifiers.
 	   Cycles through the objects and applies a random rotation about the halo centre to each,

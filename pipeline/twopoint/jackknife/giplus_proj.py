@@ -9,7 +9,7 @@ from halotools.mock_observables.alignments import gi_plus_projected
 
 period={'massiveblackii':100, 'illustris':75}
 
-def jackknife(data1, data2, options, verbosity=0, rpbins=None):
+def jackknife(data1, data2, options, verbosity=0, rpbins=None, nbins=6):
 	nsub = options['errors']['nsub']
 	if verbosity>0:
 		print('Calculating jackknife errorbars - %dx%d subvolumes'%(nsub,nsub) )
@@ -45,7 +45,7 @@ def jackknife(data1, data2, options, verbosity=0, rpbins=None):
 
 				cat1 = data1[mask1]
 				cat2 = data2[mask2]
-				gi = compute_giplus(cat1, cat2, options, rpbins=rpbins, period=period[options['simulation']])
+				gi = compute_giplus(cat1, cat2, options, rpbins=rpbins, period=period[options['simulation']], nbins=nbins)
 
 				GI.append(copy.deepcopy(gi))
 				nprocessed+=1
@@ -61,7 +61,7 @@ def jackknife(data1, data2, options, verbosity=0, rpbins=None):
 
 	return dGI
 
-def compute_giplus(cat1, cat2, options, period=100., rpbins=None):
+def compute_giplus(cat1, cat2, options, period=100., rpbins=None, nbins6):
 
 	aname = 'a%d'
 	ename = 'e%d'
@@ -74,14 +74,14 @@ def compute_giplus(cat1, cat2, options, period=100., rpbins=None):
 	pvec2 = np.vstack((cat2['x'], cat2['y'], cat2['z'])).T
 	evec = np.sqrt(cat2[ename%1]*cat2[ename%1] + cat2[ename%2]*cat2[ename%2])
 
-	if (options['2pt']['binning']=='log') and (rpbins is None):
-		rpbins = np.logspace(np.log10(options['2pt']['rpmin']), np.log10(options['2pt']['rpmax']), options['2pt']['nrpbin'])
-	elif (options['2pt']['binning']=='equal') and (rpbins is None):
-		rpbins = util.equalise_binning(options['2pt']['rpmin'], options['2pt']['rpmax'], options['2pt']['nbin'])
+	if (options['2pt']['binning']=='log') and (rbins is None):
+		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), nbins+1)
+	elif (options['2pt']['binning']=='equal') and (rbins is None):
+		rbins = util.equalise_binning(options['2pt']['rmin'], options['2pt']['rmax'], nbins+1)
 	pi_max = options['2pt']['pi_max']
 
 	mask2=avec.T[0]!=0.0
 
-	gip = gi_plus_projected(pvec2[mask2], avec[mask2], evec[mask2], pvec1, rpbins, pi_max, period=period, num_threads=1) 
+	gip = gi_plus_projected(pvec2[mask2], avec[mask2], evec[mask2], pvec1, rbins, pi_max, period=period, num_threads=1) 
 
 	return gip

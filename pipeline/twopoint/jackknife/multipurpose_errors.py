@@ -17,34 +17,34 @@ def func(x, a, b):
 	return 10**b * x**a
 
 
-def gg_3d(pvec2, pvec1, rbins, rvec1, rvec2, options):
+def gg_3d(pvec2, pvec1, rbins, rvec1, rvec2, options, nbins=6):
 	# Turn the arrays into TreeCorr readable catalogues
 	cat1 = treecorr.Catalog(x=pvec1.T[0], y=pvec1.T[1], z=pvec1.T[2])
 	cat2 = treecorr.Catalog(x=pvec2.T[0], y=pvec2.T[1], z=pvec2.T[2])
 
 	# Initialise the correlation function
-	gg = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=options['2pt']['nbin'])
+	gg = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=nbins)
 	# Do the calculation
 	gg.process(cat1,cat2)
 
 	# Process the randoms
 	rcat1 = treecorr.Catalog(x=rvec1.T[0], y=rvec1.T[1], z=rvec1.T[2])
 	rcat2 = treecorr.Catalog(x=rvec2.T[0], y=rvec2.T[1], z=rvec2.T[2])
-	gg = finish_nn(gg, cat1, cat2, rcat1, rcat2, options)
+	gg = finish_nn(gg, cat1, cat2, rcat1, rcat2, options, nbins=nbins)
 
 	R = np.exp(gg.logr)
 	xi = gg.xi
 
 	return xi
 
-def finish_nn(corr, cat1, cat2, rcat1, rcat2, options):
+def finish_nn(corr, cat1, cat2, rcat1, rcat2, options, nbins=6):
 
 	if cat2 is None:
 		cat2 = cat1
 
-	rr = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=options['2pt']['nbin'])
-	rn = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=options['2pt']['nbin'])
-	nr = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=options['2pt']['nbin'])
+	rr = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=nbins)
+	rn = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=nbins)
+	nr = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=nbins)
 
 	# Do the pair counting
 	#print('Processing randoms',)
@@ -83,10 +83,9 @@ def get_randoms(npts, period, bounds=None):
 period={'massiveblackii':100, 'illustris':75}
 measurement_functions = {'gg': gg_3d, 'ed': ed_3d, 'ee': ee_3d, 'gi_plus_projected': gi_plus_projected, 'ii_plus_projected': ii_plus_projected}
 
-def jackknife(correlation, data1, data2, data1_sym, data2_sym, options, verbosity=0, rbins=None):
+def jackknife(correlation, data1, data2, data1_sym, data2_sym, options, verbosity=0, nbins=6):
 	nsub = options['errors']['nsub']
 
-	print ('nbins: %d'%options['2pt']['nbin'])
 	if verbosity>0:
 		print ('Calculating jackknife errorbars - %dx%d subvolumes'%(nsub,nsub) )
 
@@ -149,10 +148,10 @@ def jackknife(correlation, data1, data2, data1_sym, data2_sym, options, verbosit
 				#randoms1 = get_randoms(data1.size, period[options['simulation']], bounds=[(dx*i, dx*(i+1)), (dx*j, dx*(j+1)), (dx*k, dx*(k+1))])
 				#randoms2 = get_randoms(data1.size, period[options['simulation']], bounds=[(dx*i, dx*(i+1)), (dx*j, dx*(j+1)), (dx*k, dx*(k+1))])
 
-				dd = compute(correlation, cat1, cat2, options, randoms1[rmask1], randoms2[rmask2], rbins=None)
-				dd_sym = compute(correlation, cat1_sym, cat2_sym, options, randoms1[rmask1], randoms2[rmask2], rbins=None)
+				dd = compute(correlation, cat1, cat2, options, randoms1[rmask1], randoms2[rmask2], nbins=nbins)
+				dd_sym = compute(correlation, cat1_sym, cat2_sym, options, randoms1[rmask1], randoms2[rmask2], nbins=nbins)
 
-				rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), options['2pt']['nbin']+1)
+				rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), nbins+1)
 				x = np.sqrt(rbins[:-1]*rbins[1:])
 				p,c=opt.curve_fit(func, x, dd)
 				dd_smooth = func(x, p[0], p[1])
@@ -178,11 +177,11 @@ def jackknife(correlation, data1, data2, data1_sym, data2_sym, options, verbosit
 	R2 = np.sum([(r - r0)*(r - r0) for r in R], axis=0)
 	coeff = (nsub**3 - 1.)/nsub**3
 	dR = np.sqrt(coeff * R2)
-	import pdb ; pdb.set_trace()
+	#import pdb ; pdb.set_trace()
 
 	return dF, dR
 
-def compute(correlation, cat1, cat2, options, randoms1, randoms2, rbins=None):
+def compute(correlation, cat1, cat2, options, randoms1, randoms2, rbins=None, nbins=6):
 	avec1 = np.vstack((cat1['a1'], cat1['a2'], cat1['a3'])).T
 	avec2 = np.vstack((cat2['a1'], cat2['a2'], cat2['a3'])).T
 	avec1_2d = np.vstack((cat1['a1'], cat1['a2'])).T
@@ -196,11 +195,10 @@ def compute(correlation, cat1, cat2, options, randoms1, randoms2, rbins=None):
 	rvec2 = np.vstack((randoms2['x'], randoms2['y'], randoms2['z'])).T
 
 	if (options['2pt']['binning']=='log') and (rbins is None):
-		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), options['2pt']['nbin']+1)
-		rpbins = np.logspace(np.log10(options['2pt']['rpmin']), np.log10(options['2pt']['rpmax']), options['2pt']['nrpbin'])
+		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), nbins+1)
 	elif (options['2pt']['binning']=='equal') and (rbins is None):
-		rbins = util.equalise_binning(options['2pt']['rmin'], options['2pt']['rmax'], options['2pt']['nbin'])
-		rpbins = util.equalise_binning(options['2pt']['rpmin'], options['2pt']['rpmax'], options['2pt']['nrnbin'])
+		rbins = util.equalise_binning(options['2pt']['rmin'], options['2pt']['rmax'], nbins+1)
+		
 
 	pi_max = options['2pt']['pi_max']
 	mask1 = (avec1.T[0]!=0.0) & (pvec1.T[0]!=0.0) 
@@ -212,12 +210,11 @@ def compute(correlation, cat1, cat2, options, randoms1, randoms2, rbins=None):
 	elif (correlation.lower()=='ee'):
 		return fn(pvec2[mask2], avec2[mask2], pvec1[mask1], avec1[mask1], rbins, num_threads=1) 
 	elif (correlation.lower()=='gi_plus_projected'):
-		return fn(pvec2[mask2], avec2_2d[mask2], evec2[mask2], pvec1, rpbins, pi_max, randoms1=rvec1, randoms2=rvec2, num_threads=1) 
+		return fn(pvec2[mask2], avec2_2d[mask2], evec2[mask2], pvec1, rbins, pi_max, randoms1=rvec1, randoms2=rvec2, num_threads=1) 
 	elif (correlation.lower()=='ii_plus_projected'):
-		return fn(pvec2[mask2], avec2_2d[mask2], evec2[mask2], pvec1[mask1], avec1_2d[mask1], evec1[mask1], rpbins, pi_max, randoms1=rvec1, randoms2=rvec2, num_threads=1) 
+		return fn(pvec2[mask2], avec2_2d[mask2], evec2[mask2], pvec1[mask1], avec1_2d[mask1], evec1[mask1], rbins, pi_max, randoms1=rvec1, randoms2=rvec2, num_threads=1) 
 	elif (correlation.lower()=='gg'):
-		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), options['2pt']['nbin']+1)
-		return fn(pvec2[mask2], pvec1[mask1], rbins, rvec2, rvec1, options) 
+		return fn(pvec2[mask2], pvec1[mask1], rbins, rvec2, rvec1, options, nbins=nbins) 
 	else:
 		raise ValueError('Unknown correlation function: %s.'%correlation)
 

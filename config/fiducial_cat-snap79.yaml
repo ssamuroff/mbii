@@ -6,8 +6,8 @@ simulation : massiveblackii
 catalogues:
     snapshot : 79
     shapes_method : inertia_tensor 
-    postprocessed : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot79.fits
-    shapes_dir : /physics2/ssamurof/massive_black_ii/cats/final2/raw/
+    postprocessed : /physics2/ssamurof/massive_black_ii/cats/final3/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot79.fits
+    shapes_dir : /physics2/ssamurof/massive_black_ii/cats/final3/raw/
 
     cuts :
         npart_dm : 1000 1e60
@@ -19,10 +19,10 @@ catalogues:
     halo_matching : True
 
 symmetrisation:
-    catalogue : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot79.fits
-    output : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot79-symmetrised.fits
+    catalogue : /physics2/ssamurof/massive_black_ii/cats/final3/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot79.fits
+    output : /physics2/ssamurof/massive_black_ii/cats/final3/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot79-symmetrised.fits
     pivot_type : mass
-    central_type : spatial_central
+    central_type : hybrid_central
 
 
 errors:
@@ -30,11 +30,11 @@ errors:
 
 2pt:
     mode : errors
-    ctypes : gi_plus_projected ii_plus_projected ed ee gg 
+    ctypes : iiplus_proj ed ee giplus_proj
     errors: True
-    shapes : /Users/hattifattener/Documents/ias/mbii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot79.fits
-    shapes_symmetrised : /Users/hattifattener/Documents/ias/mbii/cats/final2/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot79-symmetrised0.fits
-    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/v10/snapshot79
+    shapes : /Users/hattifattener/Documents/ias/mbii/cats/final3/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot79.fits
+    shapes_symmetrised : /Users/hattifattener/Documents/ias/mbii/cats/final3/postprocessed/base_subhalo_shapes-v10-ndm1000-nst300-snapshot79-symmetrised0.fits
+    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/v11/snapshot79/fiducial
     split : 
     split_val : 1
     binning : log
