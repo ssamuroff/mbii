@@ -8,7 +8,7 @@ import mbii.lego_tools as utils
 from numpy.core.records import fromarrays
 
 
-def symmetrise_catalogue3(data=None, seed=4000, mask=None, filename='/home/ssamurof/massive_black_ii/subhalo_cat-nthreshold5.fits', pivot='mass', central='spatial_central', snapshot=85, savedir=None, replace=False, verbose=True, nmin=0, rank=0, size=1):
+def symmetrise_catalogue3(data=None, seed=4000, mask=None, filename='/home/ssamurof/massive_black_ii/subhalo_cat-nthreshold5.fits', pivot='mass', central='spatial_central', snapshot=85, simulation='massiveblackii', savedir=None, replace=False, verbose=True, nmin=0, rank=0, size=1):
     """Takes a catalogue of subhalos with orientations, positions and host halo identifiers.
 	   Cycles through the objects and applies a random rotation about the halo centre to each,
 	   recalculating the position and shape vectors such that the relative orientation to
@@ -68,7 +68,7 @@ def symmetrise_catalogue3(data=None, seed=4000, mask=None, filename='/home/ssamu
             continue
 
         # Now apply the symmetrisation operation to these galaxies
-        symmetrised_halo = symmetrise_halo5(data[select], verbose=True, g=g, pivot=pivot, central=central, snapshot=snapshot)
+        symmetrised_halo = symmetrise_halo5(data[select], verbose=True, g=g, pivot=pivot, central=central, snapshot=snapshot, simulation=simulation)
 
         if verbose:
             print g, ngal
@@ -99,8 +99,10 @@ def symmetrise_halo4(data, verbose=True, g=None):
     N = data['npart_baryon']
     n = data.size
 
+    boxsize = choose_boxsize(simulation)
+
     # Work out the centroid about which to rotate  
-    data, positions, (x0, y0, z0) = get_wrapped_positions(g, data, snapshot=snapshot) 
+    data, positions, (x0, y0, z0) = get_wrapped_positions(g, data, snapshot=snapshot, boxsize=boxsize) 
     cent = np.array([x0,y0,z0])
 
     # New array to store the output
@@ -191,7 +193,13 @@ def symmetrise_halo4(data, verbose=True, g=None):
     return rot
 
 
-def symmetrise_halo5(data, verbose=True, g=None, pivot='mass', central='spatial_central', snapshot=85):
+def choose_boxsize(simulation):
+    if (simulation.lower()=='massiveblackii'):
+        return 100
+    elif (simulation.lower()=='illustris'):
+        return 75
+
+def symmetrise_halo5(data, verbose=True, g=None, pivot='mass', central='spatial_central', snapshot=85, simulation='massiveblackii'):
     """
     Takes an array of objects associated with a particular halo,
     queries the database on coma to find the halo centroid positions
@@ -202,8 +210,10 @@ def symmetrise_halo5(data, verbose=True, g=None, pivot='mass', central='spatial_
     N = data['npart_baryon']
     n = data.size
 
+    boxsize = choose_boxsize(simulation)
+
     # Work out the centroid about which to rotate  
-    data, positions, (x0, y0, z0) = get_wrapped_positions(g, data, pivot=pivot, snapshot=snapshot) 
+    data, positions, (x0, y0, z0) = get_wrapped_positions(g, data, pivot=pivot, snapshot=snapshot, simulation=simulation, boxsize=boxsize) 
     cent = np.array([x0,y0,z0])
 
     # New array to store the output
@@ -225,11 +235,17 @@ def symmetrise_halo5(data, verbose=True, g=None, pivot='mass', central='spatial_
         R = np.sqrt(sum(pos*pos))
         phi = np.arccos(pos[2]/R) * pos[0]/abs(pos[0])
         theta = np.arcsin(pos[1]/R/np.sin(phi))
+
+       # if not np.isclose(rot['rh'][i],R):
+        #    import pdb ; pdb.set_trace()
         rot['rh'][i] = R
 
         # We can skip the rest for central objects
         if (data[central][i]==1):
             rot = check_wrapping(i, rot)
+            #rot['x'][i]=x0
+            #rot['y'][i]=y0
+            #rot['z'][i]=z0
             if verbose:
                 print 'skipping object -- it is classified as a central galaxy'
             continue
@@ -247,8 +263,6 @@ def symmetrise_halo5(data, verbose=True, g=None, pivot='mass', central='spatial_
         # Then work backwards to get the rotation matrix needed to transform the initial position to the rotated one
         rotation_axis, rotation_angle = infer_rotation_angle(pos,rotated)
         Rxyz = build_rotation_matrix(alpha=rotation_angle, vec=rotation_axis)
-
-        if (R>70): import pdb ; pdb.set_trace()
 
         if verbose:
             print 'New position (x, y, z) : %3.3f, %3.3f %3.3f'%(rot['x'][i],rot['y'][i],rot['z'][i])
@@ -279,11 +293,7 @@ def symmetrise_halo5(data, verbose=True, g=None, pivot='mass', central='spatial_
         if verbose: 
             print 'Rotation leaves %d object(s) outside the simulation box.'%(rot['x'][(rot['x']<0) | (rot['y']<0) | (rot['z']<0)].size)
 
-        rot0 = check_wrapping(i, rot)
-
-        if rot0['x'][i]<0 : import pdb ; pdb.set_trace()
-
-        rot = rot0
+        rot = check_wrapping(i, rot)
 
         # Store everything in the appropriate place
         for j in xrange(3):
@@ -295,6 +305,8 @@ def symmetrise_halo5(data, verbose=True, g=None, pivot='mass', central='spatial_
         rot = project_ellipticities(i, rot, suffix='')
         # Same for dark matter 
         rot = project_ellipticities(i, rot, suffix='dm')
+
+
         
     return rot
 
@@ -316,10 +328,10 @@ def project_ellipticities(i, rot, suffix=''):
 	return rot
 
 
-def get_wrapped_positions(g, data, pivot='mass', snapshot=85):
+def get_wrapped_positions(g, data, pivot='mass', snapshot=85, simulation='massiveblackii', boxsize=100):
     # Query the DB for the halo centre
     if (pivot.lower()=='mass'):
-    	info = find_centre(g, snapshot=snapshot)
+    	info = find_centre(g, snapshot=snapshot, simulation=simulation)
     elif (pivot.lower()=='most_massive_galaxy'):
     	info = np.zeros(1,dtype=[('x',float),('y',float),('z',float)])
     	mask = (data['most_massive']==1)
@@ -329,23 +341,31 @@ def get_wrapped_positions(g, data, pivot='mass', snapshot=85):
             info['z'] = data['z'][mask][0] * 1000
         else:
             print 'No central galaxy. Falling back on the centre of mass from the database'
-            info = find_centre(g)
+            info = find_centre(g, snapshot=snapshot, simulation=simulation)
     elif (pivot.lower()=='most_central_galaxy'):
         info = np.zeros(1,dtype=[('x',float),('y',float),('z',float)])
-        mask = (data['spatial_central']==1)
-        if len(data['x'][mask])==1:
+        mask = (data['halo_id']==g)
+        info['x'] = data['xcent'][mask][0] * 1000
+        info['y'] = data['ycent'][mask][0] * 1000
+        info['z'] = data['zcent'][mask][0] * 1000
+    elif (pivot.lower()=='hybrid_central_galaxy'):
+        info = np.zeros(1,dtype=[('x',float),('y',float),('z',float)])
+        mask = (data['halo_id']==g) & (data['hybrid_central']==1)
+        if (len(data['halo_id'][mask])==0):
+            print 'No central galaxy. Falling back on the centre of mass from the database'
+            info = find_centre(g, snapshot=snapshot, simulation=simulation)
+        else:
             info['x'] = data['x'][mask][0] * 1000
             info['y'] = data['y'][mask][0] * 1000
             info['z'] = data['z'][mask][0] * 1000
-        else:
-            print 'No central galaxy. Falling back on the centre of mass from the database'
-            info = find_centre(g)
+        #import pdb ; pdb.set_trace()
+
     else:
         raise ValueError('Unknown pivot option:%s'%pivot)
 
     
     for comp in ['x','y','z']:
-        if (data[comp]<5).max() and (data[comp]>95).max():
+        if (data[comp]<5).max() and (data[comp]>boxsize-5).max():
             # Shift everything back down to the lower edge of the simulation box
             # This will produce negative positions, which is fine if we shift the
             # galaxies outside the box back after the rotation
@@ -353,15 +373,15 @@ def get_wrapped_positions(g, data, pivot='mass', snapshot=85):
             # The 5 Mpc border is a bit arbitary, but it's probably safe to say any
             # halo with galaxies within both the uppermost and lowermost 5 Mpc is
             # an artefact of the periodic boundary conditions   
-            data[comp][data[comp]>95]-=100
+            data[comp][data[comp]>(boxsize-5)]-=boxsize
 
 
         # This should handle the case where the centroid is on the opposite
         # side of the box to all of the galaxies surviving cuts 
-        if ( ((info[comp]/1000)>95) and (data[comp]<5).max() ):
-            info[comp]-=100*1000
-        if ( ((info[comp]/1000)<5) and (data[comp]>95).max() ):
-            info[comp]+=100*1000
+        if ( ((info[comp]/1000)>boxsize-5) and (data[comp]<5).max() ):
+            info[comp]-=boxsize*1000
+        if ( ((info[comp]/1000)<5) and (data[comp]>(boxsize-5)).max() ):
+            info[comp]+=boxsize*1000
 
 
     x0,y0,z0 = info['x']/1000., info['y']/1000., info['z']/1000.
@@ -447,20 +467,48 @@ def build_rotation_matrix(theta=None, phi=None, alpha=None, vec=[]):
 
     return R
 
+cosmoparam = {'omega_m':0.275, 'sigma8':0.816, 'ns': 0.968, 'omega_b': 0.046, 'omega_de': 0.725, 'h': 0.701,'w': -1.0}
+def find_r200(M):
+    """Given an array of galaxy masses in units of h^-1 M_*
+    compute the virial radius in h^-1 Mpc."""
 
-def find_centre(g, snapshot=85):
+    # convert to SI units
+    Mt = sum(M)/cosmoparam['h']*1.989e30
+    C = 7.7836e7
+
+    # Value in metres
+    R200 = C * Mt**(1/3.)
+
+    # Convert to h^-1 Mpc
+    R200/=3.086e22
+    R200*=cosmoparam['h']
+
+    return R200
+
+
+def find_centre(g, snapshot=85, simulation='massiveblackii'):
     """Locate the mass centroid of a particular group of galaxies"""
-    import pymysql as mdb
-    sql = 'SELECT x,y,z FROM subfind_groups WHERE groupId=%d AND snapnum=%d;'%(g, snapshot)
+    if (simulation=='massiveblackii'):
+        import pymysql as mdb
+        sql = 'SELECT x,y,z FROM subfind_groups WHERE groupId=%d AND snapnum=%d;'%(g, snapshot)
 
-    sqlserver='localhost' ; user='flanusse' ; password='mysqlpass' ; dbname='mb2_hydro'
-    unix_socket='/home/rmandelb.proj/flanusse/mysql/mysql.sock'
-    db = mdb.connect(sqlserver, user, password, dbname, unix_socket=unix_socket)
+        sqlserver='localhost' ; user='flanusse' ; password='mysqlpass' ; dbname='mb2_hydro'
+        unix_socket='/home/rmandelb.proj/flanusse/mysql/mysql.sock'
+        db = mdb.connect(sqlserver, user, password, dbname, unix_socket=unix_socket)
 
-    c = db.cursor()
-    c.execute(sql)
-    results = fromarrays(np.array(c.fetchall()).squeeze().T,names='x,y,z')
-    return results
+        c = db.cursor()
+        c.execute(sql)
+        results = fromarrays(np.array(c.fetchall()).squeeze().T,names='x,y,z')
+        return results
+    elif (simulation=='illustris'):
+        import illustris_python as il
+        root = '/nfs/nas-0-1/vat/Illustris-1'
+        info = il.groupcat.loadSingle(root,snapshot,haloID=g)['GroupPos']
+        out = np.array(1, dtype=[('x', float), ('y', float), ('z', float)])
+        out['x'] = info[0]
+        out['y'] = info[1]
+        out['z'] = info[2]
+        return out
 
 def check_wrapping(i, rot, boxsize=100):
 	# Lower edge on each axis

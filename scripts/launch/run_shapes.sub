@@ -1,10 +1,11 @@
 #!/bin/bash 
-#PBS -N spin_iter2_mat
+#PBS -N masscut_spin_mat
 #PBS -l nodes=1:ppn=1
-#PBS -l walltime=16:00:00
-#PBS -o /home/ssamurof/logs/run_shapes_spin_mat.log
+#PBS -l walltime=18:00:00
+#PBS -o /physics2/ssamurof/logs/run_shapes_spin.log
 #PBS -j oe
 
 module load python27
+
 cd /home/ssamurof/
-python /home/ssamurof/.local/lib/python2.7/site-packages/mbii/scripts/get_inertia_tensors.py --type spin
+python /home/ssamurof/.local/lib/python2.7/site-packages/mbii/scripts/get_inertia_tensors.py --type inertia_tensor

@@ -1,10 +1,10 @@
 #!/bin/bash 
-#PBS -N build_eta
+#PBS -N build_eta-centsat
 #PBS -l nodes=1:ppn=1
-#PBS -l walltime=4:00:00
+#PBS -l walltime=4:40:00
 #PBS -o /home/ssamurof/logs/build_eta.log
 #PBS -j oe
 
 module load python27
 cd /home/ssamurof/
-python /home/ssamurof/.local/lib/python2.7/site-packages/mbii/scripts/plot_eta.py
+python -m mbii.pipeline.calculate_2pt --config $CODE/mbii/config/fiducial_cat.yaml --ctype eta

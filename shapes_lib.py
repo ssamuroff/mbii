@@ -12,6 +12,8 @@ from readsubhalo import *
 from mbii.readsubhalo import *
 import fitsio as fi
 
+colnames = {'SubhaloMassType':'massbytype', 'SubhaloLenType':'lenbytype', 'SubhaloGrNr':'groupid', 'pos':'SubhaloPos'} 
+
 def build_matrix(pos, reduced=False):
 	"""Construct a 3x3 inertia tensor of particles in a subhalo.
 	Requires an array of particle positions relative to the subhalo centroid."""
@@ -75,9 +77,9 @@ def export(inclusion_threshold, eigvalues, eigvalues_2d, eigvectors_2d, eigvecto
 
 	# Decide on the filename
  	if reduced:
- 		filename = '%s/%s-subhalo_cat_reduced-nthreshold%d-snapshot%d-proj+3d-%d.fits'%(simulation, dirname, inclusion_threshold, snapshot, rank)
+ 		filename = '%s/%s-subhalo_cat_reduced-nthreshold%d-snapshot%d-proj+3d-%d.fits'%(dirname, simulation, inclusion_threshold, snapshot, rank)
  	else:
- 		filename = '%s/%s-subhalo_cat-nthreshold%d-snapshot%d-proj+3d-%d.fits'%(simulation, dirname, inclusion_threshold, snapshot, rank)
+ 		filename = '%s/%s-subhalo_cat-nthreshold%d-snapshot%d-proj+3d-%d.fits'%(dirname, simulation, inclusion_threshold, snapshot, rank)
 
  	print "Saving output to %s"%filename
  	out = fi.FITS(filename,'rw')
@@ -168,7 +170,7 @@ def load_single_subhalo(i, simulation, snapshot, root):
 	return x, xb
 
 
-def read_subhalo_data(simulation, snapshot, root):
+def read_subhalo_data(simulation, snapshot, root, columns=['SubhaloPos']):
 	"""Read in the particle information from either MBII or Illustris.
 	   The formats of the data on disc are slightly different, and so
 	   some fiddling is needed to get the catalogues into something
@@ -195,12 +197,53 @@ def read_subhalo_data(simulation, snapshot, root):
 		xb = []
 		mb = []
 
-		subhalo_positions = il.groupcat.loadSubhalos(root, snapshot, fields=['SubhaloPos'])
+		subhalo_positions = il.groupcat.loadSubhalos(root, snapshot, fields=columns)
 
 	else:
 		raise ValueError('Unknown simulation. Sorry.')
 
 	return subhalo_positions, x, xb
+
+def read_subhalo_data_all(simulation, snapshot, root):
+
+	if (simulation.lower()=='massiveblackii'):
+
+		snap = SnapDir('0%d'%snapshot, root)
+		h = snap.readsubhalo()
+
+		ms = h['massbytype'].T[4]
+		md = h['massbytype'].T[1]
+		mg = h['massbytype'].T[0]
+		nd = h['lenbytype'].T[1]
+		ns = h['lenbytype'].T[4]
+		vdisp = h['vdisp'] 
+		spin = h['vcirc']
+		ig = h['groupid']
+
+
+		pos = h['pos']
+
+	elif (simulation.lower()=='illustris'):
+		import illustris_python as il
+
+		info = il.groupcat.loadSubhalos(root, snapshot)
+
+		pos = info['SubhaloPos']
+
+		ms = info['SubhaloMassType'].T[4]
+		md = info['SubhaloMassType'].T[1]
+		mg = info['SubhaloMassType'].T[0]
+		nd = info['SubhaloLenType'].T[1]
+		ns = info['SubhaloLenType'].T[4]
+
+		vdisp = info['SubhaloVelDisp']
+		spin = info['SubhaloSpin']
+		ig = info['SubhaloGrNr']
+
+	else:
+		raise ValueError('Unknown simulation. Sorry.')
+
+	return ig, pos, md, ms, mg, nd, ns, vdisp, spin
 
 def compute_inertia_tensors(options, rank, size, reduced=False, inclusion_threshold=5, snapshot=85, savedir=''):
  	""" Compute the intertia tensors for all subhalos. Do the calculation twice, for the

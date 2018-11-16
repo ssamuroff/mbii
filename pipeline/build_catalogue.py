@@ -38,7 +38,8 @@ dt = [
       #('central', int), # Flag to indicate central galaxies
       ('rh', float), # Radial distance from the centre of the halo
       ('most_massive', int), # Binary flag, 1 if subhalo is has the highest DM mass in its group 
-      ('spatial_central', float), # Bianry flag, 1 if subhalo is the closest to the potential minimum of the host halo 
+      ('spatial_central', float), # Binary flag, 1 if subhalo is the closest to the potential minimum of the host halo
+      ('hybrid_central', int), # Binary flag, 1 if subhalo is both in the 5 closest to the potential minimum and the 5 most massive objects in its host halo
       ('halo_id', int), # ID of the halo in which each galaxy resides
       ('nocc', int)] # Number of galaxies in that halo (so for any galaxy there are nocc-1 others sharing the same halo)
 
@@ -421,9 +422,9 @@ if config['catalogues']['halo_matching']:
 	else:
 		import illustris_python as il
 		root='/nfs/nas-0-1/vat/Illustris-1'
-		sub = il.groupcat.loadSubhalos(root, config['catalogues']['snapshot'])
-		cat.array['halo_id'] = sub['SubhaloParent'][mask]
-		h['groupid'] = sub['SubhaloParent']
+		#sub = il.groupcat.loadSubhalos(root, config['catalogues']['snapshot'])
+		cat.array['halo_id'] = ig[mask]
+		h['groupid'] = ig
 
 else:
 	ref = fi.FITS('/physics2/ssamurof/massive_black_ii/cats/base_subhalo_shapes-v2.fits')[1].read()
@@ -468,9 +469,9 @@ for i, g in enumerate(np.unique(ig)):
     fmask = np.isfinite(rh)
     flags[(rh==rh[fmask].min())] = 1
     scflag[hmask] = flags
-    xcent[hmask] = x[(rh==rh[fmask].min())]
-    ycent[hmask] = y[(rh==rh[fmask].min())]
-    zcent[hmask] = z[(rh==rh[fmask].min())]
+    xcent[hmask] = np.atleast_1d(x[(rh==rh[fmask].min())])[0]
+    ycent[hmask] = np.atleast_1d(y[(rh==rh[fmask].min())])[0]
+    zcent[hmask] = np.atleast_1d(z[(rh==rh[fmask].min())])[0]
     print i, g 
 
 

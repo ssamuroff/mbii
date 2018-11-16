@@ -57,6 +57,8 @@ def execute(block, config):
 	P_gI = GI_modified * p_gm / p_nl
 	block.put_grid("galaxy_intrinsic_power", "z", z, "k_h", k, "p_k", P_gI)
 
+	import pdb ; pdb.set_trace()
+
 	print 'Overwriting IA power spectra.'
 
 	return 0
