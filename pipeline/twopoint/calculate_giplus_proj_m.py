@@ -3,17 +3,39 @@ import treecorr
 import numpy as np 
 import argparse
 import yaml
+import mbii.shapes_lib as slib
 #import mbii.lego_tools as util
 from halotools.mock_observables.alignments import gi_plus_projected
 from mbii.pipeline.twopoint.jackknife import giplus_proj_m as errors 
 
+def generate_random_particle_cat(options, npart=2911409):
+    print 'Generating random subsample of %d dark matter particles'%npart
+    root_folder = options['root_folder']
+    snapshot = '0%d'%options['catalogues']['snapshot']
+    h, x, xb = slib.read_subhalo_data(options['simulation'], int(snapshot), root_folder)
+    x0 = []
+    y0 = []
+    z0 = []
+    for i in xrange(npart):
+        ihalo = np.random.randint(len(x))
+        p = x[ihalo]
+        isub = np.random.randint(len(p))
+        x0.append(p[isub][0]/1e3)
+        y0.append(p[isub][1]/1e3)
+        z0.append(p[isub][2]/1e3)
+    pvec = np.array(npart, dtype=[('x', float), ('y', float), ('z', float)])
+    pvec['x'] = x0
+    pvec['y'] = y0
+    pvec['z'] = z0
+    return pvec
+
 def compute(options):
-	print 'Shape data : %s'%options['output']
 
 	binning = options['2pt']['binning']
 
 	data = fi.FITS(options['2pt']['shapes'])[-1].read()
 
+	particles = generate_random_particle_cat(options)
 	splitflag=options['2pt']['split']
 
 	if splitflag is not None:
@@ -36,10 +58,10 @@ def compute(options):
 	print 'Computing correlation functions.'
 	print '11'
 	cat1 = data[mask]
-	c1c1 = compute_giplus(cat1, cat1, options) 
+	c1c1 = compute_giplus(particles, cat1, options) 
 
 	if options['2pt']['errors']:
-		dc1c1 = errors.jackknife(data[mask], data[mask], options, rpbins=rpbins)
+		dc1c1 = errors.jackknife(particles, data[mask], options, rpbins=rpbins)
 	else:
 		dc1c1 = np.zeros(c1c1.size)
 
@@ -51,17 +73,17 @@ def compute(options):
 
 	if splitflag:
 		print '22'
-		c2c2 = compute_giplus(cat2, cat2, options, rpbins=rpbins)
+		c2c2 = compute_giplus(particles, cat2, options, rpbins=rpbins)
 	
 		print '12'
-		c1c2 = compute_giplus(cat1, cat2, options, rpbins=rpbins)
+		c1c2 = compute_giplus(particles, cat2, options, rpbins=rpbins)
 		print '21'
-		c2c1 = compute_giplus(cat2, cat1, options, rpbins=rpbins)
+		c2c1 = compute_giplus(particles, cat1, options, rpbins=rpbins)
 
 		if options['2pt']['errors']:
-			dc2c2 = errors.jackknife(cat2, cat2, options, rpbins=rpbins)
-			dc1c2 = errors.jackknife(cat1, cat2, options, rpbins=rpbins)
-			dc2c1 = errors.jackknife(cat2, cat1, options, rpbins=rpbins)
+			dc2c2 = errors.jackknife(particles, cat2, options, rpbins=rpbins)
+			dc1c2 = errors.jackknife(particles, cat2, options, rpbins=rpbins)
+			dc2c1 = errors.jackknife(particles, cat1, options, rpbins=rpbins)
 
 		else:
 			dc1c1 = np.zeros(c1c1.size)
@@ -77,10 +99,10 @@ def compute(options):
 
 	print '00'
 	cat0 = data
-	c0c0 = compute_giplus(cat0, cat0, options, rpbins=rpbins)
+	c0c0 = compute_giplus(particles, cat0, options, rpbins=rpbins)
 	
 	if options['2pt']['errors']:
-		dc0c0 = errors.jackknife(data, data, options, rpbins=rpbins)
+		dc0c0 = errors.jackknife(particles, data, options, rpbins=rpbins)
 	else:
 		dc0c0 = np.zeros(c0c0.xi.size)
 	export_array('%s/GIplus_proj_m_corr_00%s.txt'%(options['2pt']['savedir'], suffix), rpbins, c0c0, dc0c0)

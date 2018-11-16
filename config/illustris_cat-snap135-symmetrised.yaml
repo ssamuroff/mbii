@@ -6,8 +6,8 @@ simulation : illustris
 catalogues:
     snapshot : 135
     shapes_method : inertia_tensor 
-    postprocessed : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/illustris-base_subhalo_shapes-v10-ndm1000-nst300-snapshot135.fits
-    shapes_dir : /physics2/ssamurof/massive_black_ii/cats/final2/raw
+    postprocessed : /physics2/ssamurof/massive_black_ii/cats/final3/postprocessed/illustris-base_subhalo_shapes-v10-ndm1000-nst300-snapshot135.fits
+    shapes_dir : /physics2/ssamurof/massive_black_ii/cats/final3/raw
 
     cuts :
         npart_dm : 1413 1e60
@@ -19,10 +19,10 @@ catalogues:
     halo_matching : True
 
 symmetrisation:
-    catalogue : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/illustris-base_subhalo_shapes-v10-ndm1000-nst300-snapshot135.fits
-    output : /physics2/ssamurof/massive_black_ii/cats/final2/postprocessed/illustris-base_subhalo_shapes-v10-ndm1000-nst300-snapshot135-symmetrised.fits
+    catalogue : /physics2/ssamurof/massive_black_ii/cats/final3/postprocessed/illustris-base_subhalo_shapes-v10-ndm1000-nst300-snapshot135.fits
+    output : /physics2/ssamurof/massive_black_ii/cats/final3/postprocessed/illustris-base_subhalo_shapes-v10-ndm1000-nst300-snapshot135-symmetrised.fits
     pivot_type : mass
-    central_type : spatial_central
+    central_type : hybrid_central
 
 
 errors:
@@ -30,9 +30,10 @@ errors:
 
 2pt:
     ctypes : gg ed ee giplus_proj iiplus_proj
+    mode: 2pt
     errors: True
-    shapes : /Users/hattifattener/Documents/ias/mbii/cats/final2/postprocessed/illustris-base_subhalo_shapes-v10-ndm1000-nst300-snapshot135-symmetrised0.fits
-    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/v10/illustris/symmetrised
+    shapes : /Users/hattifattener/Documents/ias/mbii/cats/final3/postprocessed/illustris-base_subhalo_shapes-v10-ndm1000-nst300-snapshot135-symmetrised0.fits
+    savedir: /Users/hattifattener/Documents/ias/mbii/2pt/ns300_nd1000/v11/illustris/symmetrised
     split : spatial_central
     split_val : 1
     binning : log

@@ -55,8 +55,8 @@ for snapshot in snapshots:
 
 
 	ax=fig.add_subplot(413)
-	plt.errorbar(gi[0]*delta, ed[1], yerr=gi[2], color='purple', marker='D', mec='purple', linestyle='none', capsize=0.2, markersize=3.5, label='Basic (unsymmetrised)')
-	plt.errorbar(gi_sym[0], ed_sym[1], yerr=gi_sym[2], color='royalblue', mec='royalblue', marker='D', mfc='none', linestyle='none', capsize=0.2, markersize=3.5, label='Basic (symmetrised)')
+	plt.errorbar(gi[0]*delta, gi[1], yerr=gi[2], color='purple', marker='D', mec='purple', linestyle='none', capsize=0.2, markersize=3.5, label='Basic (unsymmetrised)')
+	plt.errorbar(gi_sym[0], gi_sym[1], yerr=gi_sym[2], color='royalblue', mec='royalblue', marker='D', mfc='none', linestyle='none', capsize=0.2, markersize=3.5, label='Basic (symmetrised)')
 	ax.set_yscale('log', nonposy="clip")
 	plt.xlim(0.1,33.)
 	plt.ylim(5e-6,2e2)
@@ -139,9 +139,15 @@ for snapshot in snapshots:
 	plt.plot(xf, dii_smooth/ii_smooth, color='pink', ls='-', label='$w_{++}$')
 	plt.xscale('log')
 
+	ee_smooth = func(ee[0], p_ee[0], p_ee[1])
+	ed_smooth = func(ed[0], p_ed[0], p_ed[1])
+	gi_smooth = func(gi[0], p_gi[0], p_gi[1])
+	ii_smooth = func(ii[0], p_ii[0], p_ii[1])
+
 	for corr in ['ee', 'ed', 'gi', 'ii']: 
-		exec('R = d%s_smooth/%s_smooth'%(corr,corr))
-		f[corr].append(R[(xf>2.0)].mean())
+		exec('r = %s[0]'%(corr))
+		exec('R = (%s[1]-%s_sym[1])/%s_smooth'%(corr,corr,corr))
+		f[corr].append(R[(r>2.0)].mean())
 
 	plt.ylim(-0.15, 0.79)
 	plt.xlim(0.1,33)

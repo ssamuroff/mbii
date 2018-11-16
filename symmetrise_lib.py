@@ -7,8 +7,32 @@ import numpy as np
 import mbii.lego_tools as utils
 from numpy.core.records import fromarrays
 
+def parse_binning(options):
+    """Takes a set of configuration settings, extracts the 2pt binning info
+    and converts it into a dictionary."""
 
-def symmetrise_catalogue3(data=None, seed=4000, mask=None, filename='/home/ssamurof/massive_black_ii/subhalo_cat-nthreshold5.fits', pivot='mass', central='spatial_central', snapshot=85, simulation='massiveblackii', savedir=None, replace=False, verbose=True, nmin=0, rank=0, size=1):
+    corrs = options['2pt']['ctypes'].split()
+    nbins = options['2pt']['nbin']
+
+    bindict = {}
+
+    # If one number is given then fix all 2pt measurements to use that
+    # otherwise assume the bin numbers follow the same ordering as the 
+    # correlation types
+    if isinstance(nbins,int):
+        n0 = [nbins]*len(corrs)     
+    else:
+        n0 = nbins.split()
+
+    for n,c in zip(n0,corrs):
+        bindict[c] = int(n)
+        print('Will use %d bins for %s'%(int(n),c))
+
+    return bindict
+
+
+
+def symmetrise_catalogue3(data=None, seed=4000, mask=None, filename='/home/ssamurof/massive_black_ii/subhalo_cat-nthreshold5.fits', pivot='mass', central='spatial_central', snapshot=85, savedir=None, replace=False, verbose=True, nmin=0, rank=0, size=1):
     """Takes a catalogue of subhalos with orientations, positions and host halo identifiers.
 	   Cycles through the objects and applies a random rotation about the halo centre to each,
 	   recalculating the position and shape vectors such that the relative orientation to
@@ -27,9 +51,9 @@ def symmetrise_catalogue3(data=None, seed=4000, mask=None, filename='/home/ssamu
     	mask = np.ones(data.size).astype(bool)
 
     # Safety catch
-    print 'Will write to %s'%savedir
+    print('Will write to %s'%savedir)
     if (savedir==filename):
-    	print "WARNING: target and input file paths are the same"
+    	print("WARNING: target and input file paths are the same")
     	import pdb ; pdb.set_trace()
 
     # Pull out the identifiers associating galaxies with halos
@@ -57,21 +81,21 @@ def symmetrise_catalogue3(data=None, seed=4000, mask=None, filename='/home/ssamu
         select = (group_ids==g)
         ngal = len(data[select])
         if verbose:
-        	print 'Halo %g contains %d object(s)'%(g,ngal)
+        	print('Halo %g contains %d object(s)'%(g,ngal))
 
         outdat['halo_id'][select] = group_ids[select]
 
         # We might want to apply some threshold, and ignore halos with fewer galaxies than some threshold 
         if (ngal<nmin):
             if verbose:
-            	print 'Skipping halo %d as it contains <%d galaxies'%(g,nmin)
+            	print('Skipping halo %d as it contains <%d galaxies'%(g,nmin))
             continue
 
         # Now apply the symmetrisation operation to these galaxies
         symmetrised_halo = symmetrise_halo5(data[select], verbose=True, g=g, pivot=pivot, central=central, snapshot=snapshot, simulation=simulation)
 
         if verbose:
-            print g, ngal
+            print(g, ngal)
 
         # Transfer the new symmetrised columns to the output array
         for name in outdat.dtype.names:
@@ -85,7 +109,7 @@ def symmetrise_catalogue3(data=None, seed=4000, mask=None, filename='/home/ssamu
     outfits.write(outdat)
     outfits.close()
 
-    print 'Done'
+    print('Done')
     return 0
 
 def symmetrise_halo4(data, verbose=True, g=None):
@@ -117,24 +141,24 @@ def symmetrise_halo4(data, verbose=True, g=None):
     # Start the inner loop, over individual galaxies. Sorry.
     for i in xrange(n):
 
-    	# Cartesian galaxy position, relative to the halo centre
-    	pos = positions.T[i]
+        # Cartesian galaxy position, relative to the halo centre
+        pos = positions.T[i]
 
-    	# Galaxy position in spherical polar coordinates
-    	R = np.sqrt(sum(pos*pos))
-    	phi = np.arccos(pos[2]/R) * pos[0]/abs(pos[0])
-    	theta = np.arcsin(pos[1]/R/np.sin(phi))
-    	rot['rh'][i] = R
+        # Galaxy position in spherical polar coordinates
+        R = np.sqrt(sum(pos*pos))
+        phi = np.arccos(pos[2]/R) * pos[0]/abs(pos[0])
+        theta = np.arcsin(pos[1]/R/np.sin(phi))
+        rot['rh'][i] = R
 
         # We can skip the rest for central objects
         if (data[central_name][i]==1):
             rot = check_wrapping(i, rot)
             if verbose:
-                print 'skipping object -- it is classified as a central galaxy'
+                print('skipping object -- it is classified as a central galaxy')
             continue
 
         if verbose:
-            print i,
+            print(i,)
 
         # Construct a 3x3 matrix to rotate galaxies by a random angle in the range [0, 2/pi]
         # about a randomly chosen axis.
@@ -147,7 +171,7 @@ def symmetrise_halo4(data, verbose=True, g=None):
         rot['z'][i] = copy.deepcopy(rotated[2])+z0
 
         if verbose:
-            print 'New position (x, y, z) : %3.3f, %3.3f %3.3f'%(rot['x'][i],rot['y'][i],rot['z'][i])
+            print('New position (x, y, z) : %3.3f, %3.3f %3.3f'%(rot['x'][i],rot['y'][i],rot['z'][i]))
 
         # Apply the same rotation to the three orientation vectors
         a3d = np.array([data['a1'][i], data['a2'][i], data['a3'][i]])
@@ -173,7 +197,7 @@ def symmetrise_halo4(data, verbose=True, g=None):
         # We also need to shift a few objects near the edges, which the rotation leaves outside the simulation box,
         # back to the other side of the universe 
         if verbose: 
-            print 'Rotation leaves %d object(s) outside the simulation box.'%(rot['x'][(rot['x']<0) | (rot['y']<0) | (rot['z']<0)].size)
+            print('Rotation leaves %d object(s) outside the simulation box.'%(rot['x'][(rot['x']<0) | (rot['y']<0) | (rot['z']<0)].size))
 
         rot = check_wrapping(i, rot)
 
@@ -247,11 +271,11 @@ def symmetrise_halo5(data, verbose=True, g=None, pivot='mass', central='spatial_
             #rot['y'][i]=y0
             #rot['z'][i]=z0
             if verbose:
-                print 'skipping object -- it is classified as a central galaxy'
+                print('skipping object -- it is classified as a central galaxy')
             continue
 
         if verbose:
-            print i,
+            print(i,)
 
         # Choose a random point on a sphere about the centroid of radius R
         rotated = sample_sphere(1, norm=R, seed=None)
@@ -265,7 +289,7 @@ def symmetrise_halo5(data, verbose=True, g=None, pivot='mass', central='spatial_
         Rxyz = build_rotation_matrix(alpha=rotation_angle, vec=rotation_axis)
 
         if verbose:
-            print 'New position (x, y, z) : %3.3f, %3.3f %3.3f'%(rot['x'][i],rot['y'][i],rot['z'][i])
+            print('New position (x, y, z) : %3.3f, %3.3f %3.3f'%(rot['x'][i],rot['y'][i],rot['z'][i]))
 
         # Apply the same rotation to the three orientation vectors
         a3d = np.array([data['a1'][i], data['a2'][i], data['a3'][i]])
@@ -291,7 +315,7 @@ def symmetrise_halo5(data, verbose=True, g=None, pivot='mass', central='spatial_
         # We also need to shift a few objects near the edges, which the rotation leaves outside the simulation box,
         # back to the other side of the universe 
         if verbose: 
-            print 'Rotation leaves %d object(s) outside the simulation box.'%(rot['x'][(rot['x']<0) | (rot['y']<0) | (rot['z']<0)].size)
+            print('Rotation leaves %d object(s) outside the simulation box.'%(rot['x'][(rot['x']<0) | (rot['y']<0) | (rot['z']<0)].size))
 
         rot = check_wrapping(i, rot)
 
@@ -333,8 +357,8 @@ def get_wrapped_positions(g, data, pivot='mass', snapshot=85, simulation='massiv
     if (pivot.lower()=='mass'):
     	info = find_centre(g, snapshot=snapshot, simulation=simulation)
     elif (pivot.lower()=='most_massive_galaxy'):
-    	info = np.zeros(1,dtype=[('x',float),('y',float),('z',float)])
-    	mask = (data['most_massive']==1)
+        info = np.zeros(1,dtype=[('x',float),('y',float),('z',float)])
+        mask = (data['most_massive']==1)
         if len(data['x'][mask])==1:
             info['x'] = data['x'][mask][0] * 1000
             info['y'] = data['y'][mask][0] * 1000
@@ -342,6 +366,8 @@ def get_wrapped_positions(g, data, pivot='mass', snapshot=85, simulation='massiv
         else:
             print 'No central galaxy. Falling back on the centre of mass from the database'
             info = find_centre(g, snapshot=snapshot, simulation=simulation)
+            print('No central galaxy. Falling back on the centre of mass from the database')
+            info = find_centre(g)
     elif (pivot.lower()=='most_central_galaxy'):
         info = np.zeros(1,dtype=[('x',float),('y',float),('z',float)])
         mask = (data['halo_id']==g)
@@ -358,8 +384,6 @@ def get_wrapped_positions(g, data, pivot='mass', snapshot=85, simulation='massiv
             info['x'] = data['x'][mask][0] * 1000
             info['y'] = data['y'][mask][0] * 1000
             info['z'] = data['z'][mask][0] * 1000
-        #import pdb ; pdb.set_trace()
-
     else:
         raise ValueError('Unknown pivot option:%s'%pivot)
 

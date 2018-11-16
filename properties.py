@@ -8,15 +8,15 @@ def compute_inertia_tensors(snap, reduced=False, inclusion_threshold=5):
     later integration within the database
     """
 
-    print 'Using reduced (distance weighted) tensors', 'yes'*int(reduced), 'no'*int(np.invert(reduced) )
+    print('Using reduced (distance weighted) tensors', 'yes'*int(reduced), 'no'*int(np.invert(reduced) ))
 
     # Read the subhalo information
     h = snap.readsubhalo()
     # Load the positions and masses of the constituent particles
-    print 'Loading dark matter particles'
+    print('Loading dark matter particles')
     x = snap.load(1, 'pos', h)
     m = snap.load(1, 'mass', h)
-    print 'Loading baryon particles'
+    print('Loading baryon particles')
     xb = snap.load(4, 'pos', h)
     mb = snap.load(4, 'mass', h)
     
@@ -32,7 +32,7 @@ def compute_inertia_tensors(snap, reduced=False, inclusion_threshold=5):
     # Will compute for each halo the inertia tensor
     for i in range(len(h)):
         if i%100 ==0:
-            print "Done %d samples"%i
+            print("Done %d samples"%i)
         # Reject subhalos with less than some threshold occupation number
         if len(x[i]) < inclusion_threshold:
             pass  
@@ -140,7 +140,7 @@ def compute_inertia_tensors(snap, reduced=False, inclusion_threshold=5):
 
 
 
-    print "Saving output"
+    print("Saving output")
     if reduced:
         out = fi.FITS('/physics2/ssamurof/massive_black_ii/subhalo_cat_reduced-nthreshold%d-proj+3d.fits'%(inclusion_threshold),'rw')
     else:
@@ -227,13 +227,13 @@ def compute_spin(snap, inclusion_threshold=1, component='baryons', nsubhalo=-1):
     # Will compute for each halo the inertia tensor
     if nsubhalo<0:
         nsubhalo=len(h)
-        print 'Will process all (%d) subhalos'%nsubhalo
+        print('Will process all (%d) subhalos'%nsubhalo)
 
-    print 'Inclusion Threshold : %d particles'%inclusion_threshold
+    print('Inclusion Threshold : %d particles'%inclusion_threshold)
 
     for i in range(nsubhalo):
         if i%100 ==0:
-            print "Done %d samples"%i
+            print("Done %d samples"%i)
 
         if len(x[i]) < inclusion_threshold:
             pass # print "Halo %d is empty of dark matter"%i
@@ -298,7 +298,7 @@ def compute_spin(snap, inclusion_threshold=1, component='baryons', nsubhalo=-1):
             Vr[i] = np.mean(vrot)
             Sigma[i] = sigma
 
-    print "Saving output"
+    print("Saving output")
     #np.save("eigenvaluesb.npy", eigvalues)
     #np.save("eigenvectorsb.npy", eigvectors)
     #np.save("centroids.npy", centroids)
