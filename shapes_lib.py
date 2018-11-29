@@ -422,3 +422,21 @@ def compute_spin(options, rank, size, inclusion_threshold=1, component='baryons'
     out.close()
 
 
+def sample_matter_field(fac, simulation, snapshot, outfile='matter_particle-cat.txt'):
+	# particle information per subhalo
+	h, x, xb = read_subhalo_data(simulation, snapshot, '/physics/yfeng1/mb2')
+
+	file = open(outfile, 'w')
+	for X in x:
+		npart = len(X)
+		nsamp = fac * npart
+
+		vec = np.random.choice(X, nsamp)
+
+		import pdb ; pdb.set_trace()
+
+
+
+
+
+
