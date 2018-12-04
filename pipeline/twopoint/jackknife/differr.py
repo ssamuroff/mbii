@@ -13,7 +13,7 @@ from halotools.mock_observables.alignments import ii_plus_projected
 import scipy.optimize as opt
 
 period={'massiveblackii':100, 'illustris':75}
-measurement_functions = {'ed': ed_3d, 'ee': ee_3d, 'gi_plus_projected': gi_plus_projected, 'ii_plus_projected': ii_plus_projected}
+measurement_functions = {'ed': ed_3d, 'ee': ee_3d, 'giplus_proj': gi_plus_projected, 'iiplus_proj': ii_plus_projected}
 
 
 def func(x, a, b):
@@ -44,12 +44,12 @@ def export_array(path, edges, result, error):
 	np.savetxt(path, out.T)
 
 
-def jackknife(correlation, data1, data2, data1_sym, data2_sym, options, verbosity=0, rbins=None):
+def jackknife(correlation, data1, data2, data1_sym, data2_sym, binning, options, verbosity=0, rbins=None):
 	"""Takes four catalogues (two samples, symmetrised and not).
 	   Works out the jackknife errorbar on the difference in anisotropy bias between the two."""
 	nsub = options['errors']['nsub']
 
-	print ('nbins: %d'%options['2pt']['nbin'])
+	#print ('nbins: %d'%options['2pt']['nbin'])
 	if verbosity>0:
 		print ('Calculating jackknife errorbars - %dx%d subvolumes'%(nsub,nsub) )
 
@@ -69,8 +69,8 @@ def jackknife(correlation, data1, data2, data1_sym, data2_sym, options, verbosit
 		for j in range(nsub):
 			for k in range(nsub):
 
-				r, dfrac1 = get_dfrac(correlation, i, j, k, dx, data1[0], data2[0], data1_sym[0], data2_sym[0], randoms1, randoms2, options)
-				r, dfrac2 = get_dfrac(correlation, i, j, k, dx, data1[1], data2[1], data1_sym[1], data2_sym[1], randoms1, randoms2, options)
+				r, dfrac1 = get_dfrac(correlation, i, j, k, dx, data1[0], data2[0], data1_sym[0], data2_sym[0], randoms1, randoms2, binning, options)
+				r, dfrac2 = get_dfrac(correlation, i, j, k, dx, data1[1], data2[1], data1_sym[1], data2_sym[1], randoms1, randoms2, binning, options)
 
 				F.append(dfrac1-dfrac2)
 				nprocessed+=1
@@ -88,14 +88,14 @@ def jackknife(correlation, data1, data2, data1_sym, data2_sym, options, verbosit
 	print('Doing global calculation')
 	# Also perform the measurement without jackknife resampling
 	# This is just a case of setting the box width to zero
-	r, dfrac1 = get_dfrac(correlation, i, j, k, 0, data1[0], data2[0], data1_sym[0], data2_sym[0], randoms1, randoms2, options)
-	r, dfrac2 = get_dfrac(correlation, i, j, k, 0, data1[1], data2[1], data1_sym[1], data2_sym[1], randoms1, randoms2, options)
+	r, dfrac1 = get_dfrac(correlation, i, j, k, 0, data1[0], data2[0], data1_sym[0], data2_sym[0], randoms1, randoms2, binning, options)
+	r, dfrac2 = get_dfrac(correlation, i, j, k, 0, data1[1], data2[1], data1_sym[1], data2_sym[1], randoms1, randoms2, binning, options)
 	diff = dfrac1 - dfrac2
 
 	return r, diff, dF
 
 
-def compute(correlation, cat1, cat2, options, randoms1, randoms2, rbins=None):
+def compute(correlation, cat1, cat2, options, randoms1, randoms2, nbins=6, rbins=None):
 	avec1 = np.vstack((cat1['a1'], cat1['a2'], cat1['a3'])).T
 	avec2 = np.vstack((cat2['a1'], cat2['a2'], cat2['a3'])).T
 	avec1_2d = np.vstack((cat1['a1'], cat1['a2'])).T
@@ -109,11 +109,11 @@ def compute(correlation, cat1, cat2, options, randoms1, randoms2, rbins=None):
 	rvec2 = np.vstack((randoms2['x'], randoms2['y'], randoms2['z'])).T
 
 	if (options['2pt']['binning']=='log') and (rbins is None):
-		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), options['2pt']['nbin']+1)
-		rpbins = np.logspace(np.log10(options['2pt']['rpmin']), np.log10(options['2pt']['rpmax']), options['2pt']['nrpbin']+1)
+		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), nbins+1)
+		rpbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), nbins+1)
 	elif (options['2pt']['binning']=='equal') and (rbins is None):
-		rbins = util.equalise_binning(options['2pt']['rmin'], options['2pt']['rmax'], options['2pt']['nbin'])
-		rpbins = util.equalise_binning(options['2pt']['rpmin'], options['2pt']['rpmax'], options['2pt']['nrnbin'])
+		rbins = util.equalise_binning(options['2pt']['rmin'], options['2pt']['rmax'], nbins+1)
+		rpbins = util.equalise_binning(options['2pt']['rmin'], options['2pt']['rmax'], nbins+1)
 
 	pi_max = options['2pt']['pi_max']
 	mask1 = (avec1.T[0]!=0.0) & (pvec1.T[0]!=0.0) 
@@ -124,9 +124,9 @@ def compute(correlation, cat1, cat2, options, randoms1, randoms2, rbins=None):
 		return rbins, fn(pvec2[mask2], avec2[mask2], pvec1[mask1], rbins, num_threads=1) 
 	elif (correlation.lower()=='ee'):
 		return rbins, fn(pvec2[mask2], avec2[mask2], pvec1[mask1], avec1[mask1], rbins, num_threads=1) 
-	elif (correlation.lower()=='gi_plus_projected'):
+	elif (correlation.lower()=='giplus_proj'):
 		return rpbins, fn(pvec2[mask2], avec2_2d[mask2], evec2[mask2], pvec1, rpbins, pi_max, randoms1=rvec1, randoms2=rvec2, num_threads=1) 
-	elif (correlation.lower()=='ii_plus_projected'):
+	elif (correlation.lower()=='iiplus_proj'):
 		return rpbins, fn(pvec2[mask2], avec2_2d[mask2], evec2[mask2], pvec1[mask1], avec1_2d[mask1], evec1[mask1], rpbins, pi_max, randoms1=rvec1, randoms2=rvec2, num_threads=1) 
 	elif (correlation.lower()=='gg'):
 		rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), options['2pt']['nbin']+1)
@@ -135,7 +135,7 @@ def compute(correlation, cat1, cat2, options, randoms1, randoms2, rbins=None):
 		raise ValueError('Unknown correlation function: %s.'%correlation)
 
 
-def get_dfrac(correlation, i, j, k, dx, data1, data2, data1_sym, data2_sym, randoms1, randoms2, options):
+def get_dfrac(correlation, i, j, k, dx, data1, data2, data1_sym, data2_sym, randoms1, randoms2, binning, options):
 	# x axis box
 	xmask1 = (data1['x']<dx*i) | (data1['x']>dx*(i+1))
 	xmask2 = (data2['x']<dx*i) | (data2['x']>dx*(i+1))
@@ -173,10 +173,10 @@ def get_dfrac(correlation, i, j, k, dx, data1, data2, data1_sym, data2_sym, rand
 	cat2 = data2[mask2]
 	cat1_sym = data1_sym[mask1_sym]
 	cat2_sym = data2_sym[mask2_sym]
-	r, dd = compute(correlation, cat1, cat2, options, randoms1[rmask1], randoms2[rmask2], rbins=None)
-	r, dd_sym = compute(correlation, cat1_sym, cat2_sym, options, randoms1[rmask1], randoms2[rmask2], rbins=None)
+	r, dd = compute(correlation, cat1, cat2, options, randoms1[rmask1], randoms2[rmask2], nbins=binning, rbins=None)
+	r, dd_sym = compute(correlation, cat1_sym, cat2_sym, options, randoms1[rmask1], randoms2[rmask2], nbins=binning, rbins=None)
 
-	rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), options['2pt']['nbin']+1)
+	rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), binning+1)
 	x = np.sqrt(rbins[:-1]*rbins[1:])
 	p,c=opt.curve_fit(func, x, dd)
 	dd_smooth = func(x, p[0], p[1])

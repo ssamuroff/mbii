@@ -30,37 +30,38 @@ def jackknife(data1, data2, options, verbosity=0, nbins=6):
 			ymask1 = (data1['y']<dx*j) | (data1['y']>dx*(j+1))
 			ymask2 = (data2['y']<dx*j) | (data2['y']>dx*(j+1))
 
-			for k in range(nsub):
-				# z axis box
-				zmask1 = (data1['z']<dx*k) | (data1['z']>dx*(k+1))
-				zmask2 = (data2['z']<dx*k) | (data2['z']>dx*(k+1))
+			
+			# Combined mask for 3D subvolume
+			mask1 = xmask1 & ymask1
+			mask2 = xmask2 & ymask2
 
-				# Combined mask for 3D subvolume
-				mask1 = xmask1 & ymask1 & zmask1
-				mask2 = xmask2 & ymask2 & zmask2
+			if verbosity>0:
+				print(data1['x'][mask1].mean())
 
-				if verbosity>0:
-					print(data1['x'][mask1].mean())
+			cat1 = treecorr.Catalog(x=data1['x'][mask1], y=data1['y'][mask1])
+			cat2 = treecorr.Catalog(x=data2['x'][mask2], y=data2['y'][mask2])
+			gg = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=nbins)
 
-				cat1 = treecorr.Catalog(x=data1['x'][mask1], y=data1['y'][mask1], z=data1['z'][mask1])
-				cat2 = treecorr.Catalog(x=data2['x'][mask2], y=data2['y'][mask2], z=data2['z'][mask2])
-				gg = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=nbins)
+			gg.process(cat1,cat2)
+			rcat11, rcat12, rcat21, rcat22 = randoms(cat1, cat2, period=period[options['simulation']])
+			gg = finish_nn(gg, cat1, cat1, rcat11, rcat12, options, nbins)
 
-				gg.process(cat1,cat2)
-				rcat11, rcat12, rcat21, rcat22 = randoms(cat1, cat2, period=period[options['simulation']])
-				gg = finish_nn(gg, cat1, cat1, rcat11, rcat12, options, nbins)
-
-				vec.append(copy.deepcopy(gg.xi))
-				gg.clear()
-				del(gg.xi)
-				nprocessed+=1
-				if verbosity>0:
-					print('%d/%d'%(nprocessed,nsub*nsub*nsub))
+			vec.append(copy.deepcopy(gg.xi))
+			gg.clear()
+			del(gg.xi)
+			nprocessed+=1
+			if verbosity>0:
+				print('%d/%d'%(nprocessed,nsub*nsub*nsub))
 
 	if verbosity>0:
 		print('Done subsampling.')
 
-	return np.array(vec).std(axis=0)
+	gg0 = np.mean(vec, axis=0)
+	R2 = np.sum([(f - gg0)*(f - gg0) for f in vec], axis=0)
+	coeff = (nsub**2 - 1.)/nsub**2
+	dGG = np.sqrt(coeff * R2)
+
+	return dGG
 
 def randoms(cat1, cat2, period=100):
 	# Initialise randoms
@@ -71,10 +72,10 @@ def randoms(cat1, cat2, period=100):
 	# to ensure they fall within the correct simulation volume
 	np.random.seed(9000)
 
-	rcat11 = treecorr.Catalog(x=np.random.rand(cat1.ntot)*period, y=np.random.rand(cat1.ntot)*period, z=np.random.rand(cat1.ntot)*period)
-	rcat12 = treecorr.Catalog(x=np.random.rand(cat1.ntot)*period, y=np.random.rand(cat1.ntot)*period, z=np.random.rand(cat1.ntot)*period)
-	rcat21 = treecorr.Catalog(x=np.random.rand(cat2.ntot)*period, y=np.random.rand(cat2.ntot)*period, z=np.random.rand(cat2.ntot)*period)
-	rcat22 = treecorr.Catalog(x=np.random.rand(cat2.ntot)*period, y=np.random.rand(cat2.ntot)*period, z=np.random.rand(cat2.ntot)*period)
+	rcat11 = treecorr.Catalog(x=np.random.rand(cat1.ntot)*period, y=np.random.rand(cat1.ntot)*period)
+	rcat12 = treecorr.Catalog(x=np.random.rand(cat1.ntot)*period, y=np.random.rand(cat1.ntot)*period)
+	rcat21 = treecorr.Catalog(x=np.random.rand(cat2.ntot)*period, y=np.random.rand(cat2.ntot)*period)
+	rcat22 = treecorr.Catalog(x=np.random.rand(cat2.ntot)*period, y=np.random.rand(cat2.ntot)*period)
 
 	return rcat11, rcat12, rcat21, rcat22
 

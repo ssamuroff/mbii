@@ -96,7 +96,7 @@ def compute(options, binning):
 	if options['2pt']['errors']:
 		dc0c0 = errors.jackknife(data, data, options, nbins=binning)
 	else:
-		dc0c0 = np.zeros(c0c0.xi.size)
+		dc0c0 = np.zeros(binning)
 	export_array('%s/IIplus_proj_corr_00%s.txt'%(options['2pt']['savedir'], suffix), rpbins, c0c0, dc0c0)	
 
 	print('Done')

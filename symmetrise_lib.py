@@ -364,7 +364,6 @@ def get_wrapped_positions(g, data, pivot='mass', snapshot=85, simulation='massiv
             info['y'] = data['y'][mask][0] * 1000
             info['z'] = data['z'][mask][0] * 1000
         else:
-            print 'No central galaxy. Falling back on the centre of mass from the database'
             info = find_centre(g, snapshot=snapshot, simulation=simulation)
             print('No central galaxy. Falling back on the centre of mass from the database')
             info = find_centre(g)
@@ -378,7 +377,7 @@ def get_wrapped_positions(g, data, pivot='mass', snapshot=85, simulation='massiv
         info = np.zeros(1,dtype=[('x',float),('y',float),('z',float)])
         mask = (data['halo_id']==g) & (data['hybrid_central']==1)
         if (len(data['halo_id'][mask])==0):
-            print 'No central galaxy. Falling back on the centre of mass from the database'
+            print('No central galaxy. Falling back on the centre of mass from the database')
             info = find_centre(g, snapshot=snapshot, simulation=simulation)
         else:
             info['x'] = data['x'][mask][0] * 1000

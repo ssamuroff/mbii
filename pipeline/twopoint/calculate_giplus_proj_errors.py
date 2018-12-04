@@ -86,6 +86,7 @@ def compute(options, binning):
 
 	print('00')
 	cat0 = data
+	cat0_sym = data_sym
 	F00,R00 = errors.jackknife('gi_plus_projected', cat0, cat0, cat0_sym, cat0_sym, options, nbins=binning)
 	export_array('%s/GIplus_proj_var_00%s.txt'%(options['2pt']['savedir'], suffix), rbins, F00, R00)
 

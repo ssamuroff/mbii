@@ -17,6 +17,26 @@ def func(x, a, b):
 	return 10**b * x**a
 
 
+def gg_projected(pvec2, pvec1, rbins, rvec1, rvec2, options, nbins=6):
+	# Turn the arrays into TreeCorr readable catalogues
+	cat1 = treecorr.Catalog(x=pvec1.T[0], y=pvec1.T[1])
+	cat2 = treecorr.Catalog(x=pvec2.T[0], y=pvec2.T[1])
+
+	# Initialise the correlation function
+	gg = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=nbins)
+	# Do the calculation
+	gg.process(cat1,cat2)
+
+	# Process the randoms
+	rcat1 = treecorr.Catalog(x=rvec1.T[0], y=rvec1.T[1])
+	rcat2 = treecorr.Catalog(x=rvec2.T[0], y=rvec2.T[1])
+	gg = finish_nn(gg, cat1, cat2, rcat1, rcat2, options, nbins=nbins)
+
+	R = np.exp(gg.logr)
+	xi = gg.xi
+
+	return xi
+
 def gg_3d(pvec2, pvec1, rbins, rvec1, rvec2, options, nbins=6):
 	# Turn the arrays into TreeCorr readable catalogues
 	cat1 = treecorr.Catalog(x=pvec1.T[0], y=pvec1.T[1], z=pvec1.T[2])
@@ -28,8 +48,8 @@ def gg_3d(pvec2, pvec1, rbins, rvec1, rvec2, options, nbins=6):
 	gg.process(cat1,cat2)
 
 	# Process the randoms
-	rcat1 = treecorr.Catalog(x=rvec1.T[0], y=rvec1.T[1], z=rvec1.T[2])
-	rcat2 = treecorr.Catalog(x=rvec2.T[0], y=rvec2.T[1], z=rvec2.T[2])
+	rcat1 = treecorr.Catalog(x=rvec1.T[0], y=rvec1.T[1], z=pvec1.T[2])
+	rcat2 = treecorr.Catalog(x=rvec2.T[0], y=rvec2.T[1], z=pvec2.T[2])
 	gg = finish_nn(gg, cat1, cat2, rcat1, rcat2, options, nbins=nbins)
 
 	R = np.exp(gg.logr)
@@ -81,7 +101,7 @@ def get_randoms(npts, period, bounds=None):
 	return out
 
 period={'massiveblackii':100, 'illustris':75}
-measurement_functions = {'gg': gg_3d, 'ed': ed_3d, 'ee': ee_3d, 'gi_plus_projected': gi_plus_projected, 'ii_plus_projected': ii_plus_projected}
+measurement_functions = {'gg': gg_3d, 'gg_proj': gg_projected, 'ed': ed_3d, 'ee': ee_3d, 'giplus_proj': gi_plus_projected, 'iiplus_proj': ii_plus_projected}
 
 def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5):
 	nsub = options['errors']['nsub']
@@ -98,44 +118,55 @@ def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5):
 	F=[]
 	nprocessed=0
 
-	randoms1 = get_randoms(data1.size, period[options['simulation']])
-	randoms2 = get_randoms(data2.size, period[options['simulation']])
+	randoms1 = [get_randoms(data1[d1].size, period[options['simulation']]) for d1 in data1.keys()]
+	randoms2 = [get_randoms(data2[d2].size, period[options['simulation']]) for d2 in data2.keys()]
 
 	for i in range(nsub):
 		# x axis box
-		xmask1 = (data1['x']<dx*i) | (data1['x']>dx*(i+1))
-		xmask2 = (data2['x']<dx*i) | (data2['x']>dx*(i+1))
-		xmask1_randoms = (randoms1['x']<dx*i) | (randoms1['x']>dx*(i+1))
-		xmask2_randoms = (randoms2['x']<dx*i) | (randoms2['x']>dx*(i+1))
+		xmask1 = [(data1[d1]['x']<dx*i) | (data1[d1]['x']>dx*(i+1)) for d1 in data1.keys()]
+		xmask2 = [(data2[d2]['x']<dx*i) | (data2[d2]['x']>dx*(i+1)) for d2 in data2.keys()]
+		xmask1_randoms = [(r1['x']<dx*i) | (r1['x']>dx*(i+1)) for r1 in randoms1]
+		xmask2_randoms = [(r2['x']<dx*i) | (r2['x']>dx*(i+1)) for r2 in randoms2]
 
 
 		for j in range(nsub):
 			# y axis box
-			ymask1 = (data1['y']<dx*j) | (data1['y']>dx*(j+1))
-			ymask2 = (data2['y']<dx*j) | (data2['y']>dx*(j+1))
-			ymask1_randoms = (randoms1['y']<dx*j) | (randoms1['y']>dx*(j+1))
-			ymask2_randoms = (randoms2['y']<dx*j) | (randoms2['y']>dx*(j+1))
+			ymask1 = [(data1[d1]['y']<dx*i) | (data1[d1]['y']>dx*(i+1)) for d1 in data1.keys()]
+			ymask2 = [(data2[d2]['y']<dx*i) | (data2[d2]['y']>dx*(i+1)) for d2 in data2.keys()]
+			ymask1_randoms = [(r1['y']<dx*i) | (r1['y']>dx*(i+1)) for r1 in randoms1]
+			ymask2_randoms = [(r2['y']<dx*i) | (r2['y']>dx*(i+1)) for r2 in randoms2]
 
 
 			for k in range(nsub):
 				# z axis box
-				zmask1 = (data1['z']<dx*k) | (data1['z']>dx*(k+1))
-				zmask2 = (data2['z']<dx*k) | (data2['z']>dx*(k+1))
-				zmask1_randoms = (randoms1['z']<dx*k) | (randoms1['z']>dx*(k+1))
-				zmask2_randoms = (randoms2['z']<dx*k) | (randoms2['z']>dx*(k+1))
+				zmask1 = [(data1[d1]['z']<dx*i) | (data1[d1]['z']>dx*(i+1)) for d1 in data1.keys()]
+				zmask2 = [(data2[d2]['z']<dx*i) | (data2[d2]['z']>dx*(i+1)) for d2 in data2.keys()]
+				zmask1_randoms = [(r1['z']<dx*i) | (r1['z']>dx*(i+1)) for r1 in randoms1]
+				zmask2_randoms = [(r2['z']<dx*i) | (r2['z']>dx*(i+1)) for r2 in randoms2]
 
 
 				# Combined mask for 3D subvolume
-				mask1 = xmask1 & ymask1 & zmask1
-				mask2 = xmask2 & ymask2 & zmask2
-				rmask1 = xmask1_randoms & ymask1_randoms & zmask1_randoms
-				rmask2 = xmask2_randoms & ymask2_randoms & zmask2_randoms
+				mask1 = [(x1 & y1 & z1) for x1,y1,z1 in zip(xmask1,ymask1,zmask1)]
+				mask2 = [(x2 & y2 & z2) for x2,y2,z2 in zip(xmask2,ymask2,zmask2)]
+				rmask1 = [(x1 & y1 & z1) for x1,y1,z1 in zip(xmask1_randoms,ymask1_randoms,zmask1_randoms)]
+				rmask2 = [(x2 & y2 & z2) for x2,y2,z2 in zip(xmask2_randoms,ymask2_randoms,zmask2_randoms)]
 
+				dd=[]
 
-				cat1 = data1[mask1]
-				cat2 = data2[mask2]
+				# Process each of the snapshots in turn
+				# The masks and the datavectors are now lists of arrays,
+				# so we need to number the snapshots and use the index t0
+				# look up the correct one
+				for l,s in enumerate(data1.keys()):
+					print('Processing snapshot %d'%s)
+					for c in correlations:
+						print('-- %s'%c)
+						cat1 = data1[s][ mask1[l] ]
+						cat2 = data2[s][ mask2[l] ]
+						rcat1 = randoms1[l][ rmask1[l] ]
+						rcat2 = randoms2[l][ rmask2[l] ]
+						dd.append(compute(c, cat1, cat2, options, rcat1, rcat2, nbins=nbins[c]))
 
-				dd = [compute(c, cat1, cat2, options, randoms1[rmask1], randoms2[rmask2], nbins=n) for a,n in zip(correlations,nbins) ]
 				F.append(np.concatenate(dd))
 
 				nprocessed+=1
@@ -145,24 +176,27 @@ def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5):
 	if verbosity>0:
 		print( 'Done subsampling.')
 
+	# Now fit together the covariance matrix
+	# should be (obviously) a symmetric matrix of dimension
+	# (\sum nbins, with the sum running over the correlation functions) 
+
 	f0 = np.mean(F, axis=0)
 	cov = np.zeros((len(f0),len(f0)))
+	F = np.array(F)
 
-	for f1,m1 in zip(F,f0):
-		for f2,m2 in zip(F,f0):
-			import pdb ; pdb.set_trace()
+	for i,f1 in enumerate(F.T):
+		m1 = f0[i]
+		for j,f2 in enumerate(F.T):
+			m2 = f0[j]
+			cov[j,i] = np.sum((f1-m1)*(f2-m2))
 
-
-
-
-
-	R2 = np.sum([(f - f0)*(f - f0) for f in F], axis=0)
 	coeff = (nsub**3 - 1.)/nsub**3
-	cov = np.sqrt(coeff * cov)
+	cov = coeff * cov
+
 
 	#import pdb ; pdb.set_trace()
 
-	return dF, dR
+	return cov
 
 def compute(correlation, cat1, cat2, options, randoms1, randoms2, rbins=None, nbins=6):
 	avec1 = np.vstack((cat1['a1'], cat1['a2'], cat1['a3'])).T
@@ -192,11 +226,11 @@ def compute(correlation, cat1, cat2, options, randoms1, randoms2, rbins=None, nb
 		return fn(pvec2[mask2], avec2[mask2], pvec1[mask1], rbins, num_threads=1) 
 	elif (correlation.lower()=='ee'):
 		return fn(pvec2[mask2], avec2[mask2], pvec1[mask1], avec1[mask1], rbins, num_threads=1) 
-	elif (correlation.lower()=='gi_plus_projected'):
+	elif (correlation.lower()=='giplus_proj'):
 		return fn(pvec2[mask2], avec2_2d[mask2], evec2[mask2], pvec1, rbins, pi_max, randoms1=rvec1, randoms2=rvec2, num_threads=1) 
-	elif (correlation.lower()=='ii_plus_projected'):
+	elif (correlation.lower()=='iiplus_proj'):
 		return fn(pvec2[mask2], avec2_2d[mask2], evec2[mask2], pvec1[mask1], avec1_2d[mask1], evec1[mask1], rbins, pi_max, randoms1=rvec1, randoms2=rvec2, num_threads=1) 
-	elif (correlation.lower()=='gg'):
+	elif (correlation.lower()=='gg_proj'):
 		return fn(pvec2[mask2], pvec1[mask1], rbins, rvec2, rvec1, options, nbins=nbins) 
 	else:
 		raise ValueError('Unknown correlation function: %s.'%correlation)

@@ -45,7 +45,7 @@ def jackknife(data1, data2, options, verbosity=0, rpbins=None, nbins=6):
 
 				cat1 = data1[mask1]
 				cat2 = data2[mask2]
-				gi = compute_giplus(cat1, cat2, options, rpbins=rpbins, period=period[options['simulation']], nbins=nbins)
+				gi = compute_giplus(cat1, cat2, options, rbins=rpbins, period=period[options['simulation']], nbins=nbins)
 
 				GI.append(copy.deepcopy(gi))
 				nprocessed+=1
@@ -61,7 +61,7 @@ def jackknife(data1, data2, options, verbosity=0, rpbins=None, nbins=6):
 
 	return dGI
 
-def compute_giplus(cat1, cat2, options, period=100., rpbins=None, nbins6):
+def compute_giplus(cat1, cat2, options, period=100., rbins=None, nbins=6):
 
 	aname = 'a%d'
 	ename = 'e%d'

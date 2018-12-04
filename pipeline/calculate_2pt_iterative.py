@@ -22,8 +22,11 @@ else:
 
 
 options = yaml.load(open(args.config))
+binning = lib.parse_binning(options)
 
-nbins = np.array([300,645,1000,1239,1954,2700,3776,4842,6673,10379])
+# Fixed values from the snapshot 85 catalogue
+# should add approximately equal numbers of extra objects for each step  
+Nbins = 10**np.array([3.27783833, 3.45742769, 3.65705585, 3.98793427])
 	#300,645,1239,1954,2700,3775])
 correlations = options['2pt']['ctypes'].split()
 options['2pt']['split'] = None
@@ -36,6 +39,7 @@ for correlation in correlations:
 		exec('from mbii.pipeline.twopoint import calculate_%s_errors as fns'%correlation)
 	else:
 		exec('from mbii.pipeline.twopoint import calculate_%s as fns'%correlation)
-	for nlow in nbins:
+	for nlow in Nbins:
 		options['2pt']['npart_cut'] = nlow
-		fns.compute(options)
+		nbins = binning[correlation]
+		fns.compute(options, nbins)

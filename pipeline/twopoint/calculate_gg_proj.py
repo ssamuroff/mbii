@@ -4,12 +4,13 @@ import numpy as np
 import argparse
 import yaml
 #import mbii.lego_tools as util
-from mbii.pipeline.twopoint.jackknife import gg as errors 
-from halotools.mock_observables.two_point_clustering import tpcf 
+from mbii.pipeline.twopoint.jackknife import gg_proj as errors 
+from halotools.mock_observables.two_point_clustering import wp  
 
 periods={'massiveblackii':100, 'illustris':75}
 
-def compute(options, binning):
+def compute0(options, binning):
+	
 	if 'positions' in options['2pt'].keys():
 		posfile = options['2pt']['positions']
 		data = fi.FITS(posfile)[-1].read()
@@ -44,10 +45,10 @@ def compute(options, binning):
 		mask = np.ones(data.size).astype(bool)
 
 	print('Setting up correlations')
-	cat1 = treecorr.Catalog(x=data['x'][mask], y=data['y'][mask], z=data['z'][mask])
+	cat1 = treecorr.Catalog(x=data['x'][mask], y=data['y'][mask])
 	
 	if splitflag:
-		cat2 = treecorr.Catalog(x=data['x'][np.invert(mask)], y=data['y'][np.invert(mask)], z=data['z'][np.invert(mask)])
+		cat2 = treecorr.Catalog(x=data['x'][np.invert(mask)], y=data['y'][np.invert(mask)])
 
 		c1c1 = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=binning)
 		c2c2 = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=binning)
@@ -95,12 +96,12 @@ def compute(options, binning):
 			dc1c2 = np.zeros(c1c2.xi.size)
 			dc2c1 = np.zeros(c2c1.xi.size)
 
-		export_treecorr_output('%s/gg_corr_11%s.txt'%(options['2pt']['savedir'], suffix), c1c1, dc1c1)
-		export_treecorr_output('%s/gg_corr_22%s.txt'%(options['2pt']['savedir'], suffix), c2c2, dc2c2)
-		export_treecorr_output('%s/gg_corr_12%s.txt'%(options['2pt']['savedir'], suffix), c1c2, dc1c2)
-		export_treecorr_output('%s/gg_corr_21%s.txt'%(options['2pt']['savedir'], suffix), c2c1, dc2c1)
+		export_treecorr_output('%s/gg_proj_corr_11%s.txt'%(options['2pt']['savedir'], suffix), c1c1, dc1c1)
+		export_treecorr_output('%s/gg_proj_corr_22%s.txt'%(options['2pt']['savedir'], suffix), c2c2, dc2c2)
+		export_treecorr_output('%s/gg_proj_corr_12%s.txt'%(options['2pt']['savedir'], suffix), c1c2, dc1c2)
+		export_treecorr_output('%s/gg_proj_corr_21%s.txt'%(options['2pt']['savedir'], suffix), c2c1, dc2c1)
 
-	cat0 = treecorr.Catalog(x=data['x'], y=data['y'], z=data['z'])
+	cat0 = treecorr.Catalog(x=data['x'], y=data['y'])
 	c0c0 = treecorr.NNCorrelation(min_sep=options['2pt']['rmin'], max_sep=options['2pt']['rmax'], nbins=binning)
 
 	rcat01, rcat02, rcat21, rcat22 = randoms(cat0, cat0, period=periods[options['simulation']])
@@ -113,7 +114,7 @@ def compute(options, binning):
 	else:
 		dc0c0 = np.zeros(c0c0.xi.size)
 
-	export_treecorr_output('%s/gg_corr_00%s.txt'%(options['2pt']['savedir'], suffix), c0c0, dc0c0)	
+	export_treecorr_output('%s/gg_proj_corr_00%s.txt'%(options['2pt']['savedir'], suffix), c0c0, dc0c0)	
 
 	print('Done')
 
@@ -122,10 +123,10 @@ def randoms(cat1, cat2, period=100):
 	# Fix the random seed so the randoms are always the same for a catalog of given length
 	# Should probably migrate this to a config option
 	np.random.seed(9000)
-	rcat11 = treecorr.Catalog(x=np.random.rand(cat1.ntot)*period, y=np.random.rand(cat1.ntot)*period, z=np.random.rand(cat1.ntot)*period)
-	rcat12 = treecorr.Catalog(x=np.random.rand(cat1.ntot)*period, y=np.random.rand(cat1.ntot)*period, z=np.random.rand(cat1.ntot)*period)
-	rcat21 = treecorr.Catalog(x=np.random.rand(cat2.ntot)*period, y=np.random.rand(cat2.ntot)*period, z=np.random.rand(cat2.ntot)*period)
-	rcat22 = treecorr.Catalog(x=np.random.rand(cat2.ntot)*period, y=np.random.rand(cat2.ntot)*period, z=np.random.rand(cat2.ntot)*period)
+	rcat11 = treecorr.Catalog(x=np.random.rand(cat1.ntot)*period, y=np.random.rand(cat1.ntot)*period)
+	rcat12 = treecorr.Catalog(x=np.random.rand(cat1.ntot)*period, y=np.random.rand(cat1.ntot)*period)
+	rcat21 = treecorr.Catalog(x=np.random.rand(cat2.ntot)*period, y=np.random.rand(cat2.ntot)*period)
+	rcat22 = treecorr.Catalog(x=np.random.rand(cat2.ntot)*period, y=np.random.rand(cat2.ntot)*period)
 
 	return rcat11, rcat12, rcat21, rcat22
 
@@ -170,9 +171,15 @@ def export_treecorr_output(filename,corr,errors):
     print('Saving %s'%filename)
     np.savetxt(filename, out.T)
 
-def compute_ht(options, binning):
-	print('Position data : %s'%options['2pt']['shapes'])
-	data = fi.FITS(options['2pt']['shapes'])[-1].read()
+def compute(options, binning):
+	if 'positions' in options['2pt'].keys():
+		posfile = options['2pt']['positions']
+		data = fi.FITS(posfile)[-1].read()
+	else:
+		posfile = options['2pt']['shapes']
+		data = fi.FITS(posfile)[-1].read()
+
+	print('Position data : %s'%posfile)
 
 	splitflag=options['2pt']['split']
 	if 'npart_cut' in options['2pt'].keys():
@@ -215,17 +222,10 @@ def compute_ht(options, binning):
 	
 
 	print('Computing correlation functions.')
-	print('11')
-	c1c1 = compute_gg(cat1,cat1,options)
-
-	if options['2pt']['errors']:
-		dc1c1 = errors.jackknife(data[mask], data[mask], options)
-	else:
-		dc1c1 = np.zeros(c1c1.size)
-
-	export('%s/gg_corr_11%s-ht.txt'%(options['2pt']['savedir'], suffix), rbins, c1c1, dc1c1)
 
 	if splitflag:
+		print('11')
+		c1c1 = compute_gg(cat1,cat1,options,binning)
 		print('22')
 		c2c2 = compute_gg(cat2,cat2,options, binning)
 		print('12')
@@ -234,42 +234,46 @@ def compute_ht(options, binning):
 		c2c1 = compute_gg(cat2,cat1,options, binning)
 
 		if options['2pt']['errors']:
+			dc1c1 = errors.jackknife(data[mask], data[mask], options)
 			dc2c2 = errors.jackknife(data[np.invert(mask)], data[np.invert(mask)], options)
 			dc1c2 = errors.jackknife(data[mask], data[np.invert(mask)], options)
 			dc2c1 = errors.jackknife(data[np.invert(mask)], data[mask], options)
 
 		else:
-			dc1c1 = np.zeros(c1c1.size)
-			dc2c2 = np.zeros(c2c2.size)
-			dc1c2 = np.zeros(c1c2.size)
-			dc2c1 = np.zeros(c2c1.size)
+			dc1c1 = np.zeros(binning)
+			dc2c2 = np.zeros(binning)
+			dc1c2 = np.zeros(binning)
+			dc2c1 = np.zeros(binning)
 
-		export('%s/gg_corr_22%s-ht.txt'%(options['2pt']['savedir'], suffix), rbins, c2c2, dc2c2)
-		export('%s/gg_corr_12%s-ht.txt'%(options['2pt']['savedir'], suffix), rbins, c1c2, dc1c2)
-		export('%s/gg_corr_21%s-ht.txt'%(options['2pt']['savedir'], suffix), rbins, c2c1, dc2c1)
+		export('%s/gg_proj_corr_11%s-ht.txt'%(options['2pt']['savedir'], suffix), rbins, c1c1, dc1c1)
+		export('%s/gg_proj_corr_22%s-ht.txt'%(options['2pt']['savedir'], suffix), rbins, c2c2, dc2c2)
+		export('%s/gg_proj_corr_12%s-ht.txt'%(options['2pt']['savedir'], suffix), rbins, c1c2, dc1c2)
+		export('%s/gg_proj_corr_21%s-ht.txt'%(options['2pt']['savedir'], suffix), rbins, c2c1, dc2c1)
 
-		cat0 = data
-		c0c0 = compute_gg(cat0,cat0,options, )
+	cat0 = data
+	c0c0 = compute_gg(cat0, cat0, options, binning)
 
-		print('00')
-		if options['2pt']['errors']:
-			dc0c0 = errors.jackknife(data, data, options)
-		else:
-			dc0c0 = np.zeros(c0c0.size)
+	print('00')
+	if options['2pt']['errors']:
+		dc0c0 = errors.jackknife(data, data, options)
+	else:
+		dc0c0 = np.zeros(binning)
 
-		export('%s/gg_corr_00%s-ht.txt'%(options['2pt']['savedir'], suffix), c0c0, dc0c0)
+	export('%s/gg_proj_corr_00%s-ht.txt'%(options['2pt']['savedir'], suffix), rbins, c0c0, dc0c0)
 		
 
 	print('Done')
 
 
 def compute_gg(cat1, cat2, options, nbins):
-	pvec1 = np.vstack((cat1['x'], cat1['y'], cat1['z'])).T
-	pvec2 = np.vstack((cat2['x'], cat2['y'], cat2['z'])).T
-	rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), nbins )
+	pvec1 = np.vstack((cat1['x'], cat1['y'],  cat1['z'])).T
+	pvec2 = np.vstack((cat2['x'], cat2['y'],  cat2['z'])).T
+	rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), nbins+1 )
 	rvec2 = randoms_halotools(cat2)
 
-	gg = tpcf(pvec2, rbins, sample2=pvec1, randoms=rvec2, num_threads=1, estimator='Landy-Szalay') 
+	pi_max = options['2pt']['pi_max'] 
+
+	gg = wp(pvec2, rbins, pi_max, sample2=pvec1, randoms=rvec2, num_threads=1, estimator='Landy-Szalay') 
 	#period=periods[options['simulation']]
 
 	return gg

@@ -8,18 +8,29 @@ from mbii.pipeline.twopoint.jackknife import covmat as errors
 
 period={'massiveblackii':100, 'illustris':75}
 
-def compute(options, binning):
-	print('Shape data : %s'%options['2pt']['shapes'])
+def compute(options, binning, snapshots):
 
-	data = fi.FITS(options['2pt']['shapes'])[-1].read()
+	data = load_catalogues(options, snapshots)
 
-	print('00')
-	dc0c0 = errors.jackknife(options['2pt']['ctypes'].split(), data, data, options, nbins=binning)
+	dc0c0 = errors.jackknife(options['covariance']['ctypes'].split(), data, data, options, nbins=binning)
 	np.savetxt('covmat_all.txt',dc0c0)
 
 	print('Done')
 
 
+def load_catalogues(options, snapshots):
+
+	#print('Shape data : %s'%options['2pt']['shapes'])
+
+	filetemp = options['2pt']['shapes'].split('snapshot')[0]
+	data = {}
+
+	for s in snapshots:
+		filename = filetemp + 'snapshot%d.fits'%int(s)
+		print('Snapshot %d: %s'%(int(s), filename))
+		data[int(s)] = fi.FITS(filename)[-1].read()
+
+	return data
 
 def export_array(path, edges, result, error):
 	x = np.sqrt(edges[:-1]*edges[1:])

@@ -11,9 +11,10 @@ args = parser.parse_args()
 options = yaml.load(open(args.config))
 binning = lib.parse_binning(options)
 
-correlations = options['2pt']['ctypes'].split()
+correlations = options['covariance']['ctypes'].split()
+snapshots = options['covariance']['snapshots'].split()
 bins = [binning[c] for c in correlations]
 
-cov.compute(options, bins)
+cov.compute(options, binning, snapshots)
 
 
