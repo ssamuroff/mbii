@@ -188,6 +188,9 @@ def bootstrap(correlations, data1, data2, options, verbosity=0, nbins=[6]*5):
 
 	return cov
 
+def revsort(array):
+	return np.flipud(np.sort(array))
+
 def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, rank=0, nthread=1):
 	nsub = options['errors']['nsub']
 
@@ -203,23 +206,23 @@ def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, ran
 	F=[]
 	nprocessed=0
 
-	randoms1 = [get_randoms(data1[d1].size, period[options['simulation']]) for d1 in data1.keys()]
-	randoms2 = [get_randoms(data2[d2].size, period[options['simulation']]) for d2 in data2.keys()]
+	randoms1 = [get_randoms(data1[d1].size, period[options['simulation']]) for d1 in revsort(data1.keys())]
+	randoms2 = [get_randoms(data2[d2].size, period[options['simulation']]) for d2 in revsort(data2.keys())]
 
 	count = 0
 
 	for i in range(nsub):
 		# x axis box
-		xmask1 =  [(data1[d1]['x']>dx*i) & (data1[d1]['x']<dx*(i+1)) for d1 in data1.keys()]
-		xmask2 =  [(data2[d2]['x']>dx*i) & (data2[d2]['x']<dx*(i+1)) for d2 in data2.keys()]
+		xmask1 =  [(data1[d1]['x']>dx*i) & (data1[d1]['x']<dx*(i+1)) for d1 in revsort(data1.keys())]
+		xmask2 =  [(data2[d2]['x']>dx*i) & (data2[d2]['x']<dx*(i+1)) for d2 in revsort(data2.keys())]
 		xmask1_randoms = [(r1['x']>dx*i) & (r1['x']<dx*(i+1)) for r1 in randoms1]
 		xmask2_randoms = [(r2['x']>dx*i) & (r2['x']<dx*(i+1)) for r2 in randoms2]
 
 
 		for j in range(nsub):
 			# y axis box
-			ymask1 =  [(data1[d1]['y']>dx*j) & (data1[d1]['y']<dx*(j+1)) for d1 in data1.keys()]
-			ymask2 =  [(data2[d2]['y']>dx*j) & (data2[d2]['y']<dx*(j+1)) for d2 in data2.keys()]
+			ymask1 =  [(data1[d1]['y']>dx*j) & (data1[d1]['y']<dx*(j+1)) for d1 in revsort(data1.keys())]
+			ymask2 =  [(data2[d2]['y']>dx*j) & (data2[d2]['y']<dx*(j+1)) for d2 in revsort(data2.keys())]
 			ymask1_randoms = [(r1['y']>dx*j) & (r1['y']<dx*(j+1)) for r1 in randoms1]
 			ymask2_randoms = [(r2['y']>dx*j) & (r2['y']<dx*(j+1)) for r2 in randoms2]
 
@@ -230,8 +233,8 @@ def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, ran
 					continue
 
 				# z axis box
-				zmask1 =  [(data1[d1]['z']>dx*k) & (data1[d1]['z']<dx*(k+1)) for d1 in data1.keys()]
-				zmask2 =  [(data2[d2]['z']>dx*k) & (data2[d2]['z']<dx*(k+1)) for d2 in data2.keys()]
+				zmask1 =  [(data1[d1]['z']>dx*k) & (data1[d1]['z']<dx*(k+1)) for d1 in revsort(data1.keys())]
+				zmask2 =  [(data2[d2]['z']>dx*k) & (data2[d2]['z']<dx*(k+1)) for d2 in revsort(data2.keys())]
 				zmask1_randoms = [(r1['z']>dx*k) & (r1['z']<dx*(k+1)) for r1 in randoms1]
 				zmask2_randoms = [(r2['z']>dx*k) & (r2['z']<dx*(k+1)) for r2 in randoms2]
 
@@ -248,7 +251,7 @@ def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, ran
 				# The masks and the datavectors are now lists of arrays,
 				# so we need to number the snapshots and use the index t0
 				# look up the correct one
-				for l,s in enumerate(np.flipud(np.sort(data1.keys()))):
+				for l,s in enumerate(revsort(data1.keys())):
 					print('Processing snapshot %d'%s)
 					for c in correlations:
 						print('-- %s'%c, data1[s][mask1[l]].size)
