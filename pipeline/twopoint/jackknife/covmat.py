@@ -248,7 +248,7 @@ def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, ran
 				# The masks and the datavectors are now lists of arrays,
 				# so we need to number the snapshots and use the index t0
 				# look up the correct one
-				for l,s in enumerate(data1.keys()):
+				for l,s in enumerate(np.flipud(np.sort(data1.keys()))):
 					print('Processing snapshot %d'%s)
 					for c in correlations:
 						print('-- %s'%c, data1[s][mask1[l]].size)
