@@ -23,22 +23,22 @@ def jackknife(data1, data2, options, verbosity=0, rbins=None, nbins=6):
 
 	for i in range(nsub-1):
 		# x axis box
-		xmask1 = (data1['x']<dx*i) | (data1['x']>dx*(i+1))
-		xmask2 = (data2['x']<dx*i) | (data2['x']>dx*(i+1))
+		xmask1 = (data1['x']>dx*i) | (data1['x']<dx*(i+1))
+		xmask2 = (data2['x']>dx*i) | (data2['x']<dx*(i+1))
 
 		for j in range(nsub):
 			# y axis box
-			ymask1 = (data1['y']<dx*j) | (data1['y']>dx*(j+1))
-			ymask2 = (data2['y']<dx*j) | (data2['y']>dx*(j+1))
+			ymask1 = (data1['y']>dx*j) | (data1['y']<dx*(j+1))
+			ymask2 = (data2['y']>dx*j) | (data2['y']<dx*(j+1))
 
 			for k in range(nsub):
 				# z axis box
-				zmask1 = (data1['z']<dx*k) | (data1['z']>dx*(k+1))
-				zmask2 = (data2['z']<dx*k) | (data2['z']>dx*(k+1))
+				zmask1 = (data1['z']>dx*k) | (data1['z']<dx*(k+1))
+				zmask2 = (data2['z']>dx*k) | (data2['z']<dx*(k+1))
 
 				# Combined mask for 3D subvolume
-				mask1 = xmask1 & ymask1 & zmask1
-				mask2 = xmask2 & ymask2 & zmask2
+				mask1 = np.invert(xmask1 & ymask1 & zmask1)
+				mask2 = np.invert(xmask2 & ymask2 & zmask2)
 
 				if verbosity>0:
 					print(data1['x'][mask1].mean())

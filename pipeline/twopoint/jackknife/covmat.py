@@ -7,6 +7,7 @@ import copy
 from halotools.mock_observables.alignments import ed_3d
 from halotools.mock_observables.alignments import ee_3d
 #from halotools.mock_observables.two_point_clustering.tpcf import tpcf as gg_3d 
+from halotools.mock_observables.two_point_clustering import wp
 from halotools.mock_observables.alignments import gi_plus_projected
 from halotools.mock_observables.alignments import ii_plus_projected
 #import mbii.lego_tools as util
@@ -18,6 +19,15 @@ def func(x, a, b):
 
 
 def gg_projected(pvec2, pvec1, rbins, rvec1, rvec2, options, nbins=6):
+
+	rbins = np.logspace(np.log10(options['2pt']['rmin']), np.log10(options['2pt']['rmax']), nbins+1 )
+	pi_max = options['2pt']['pi_max'] 
+
+	gg = wp(pvec2, rbins, pi_max, sample2=pvec1, randoms=rvec2, num_threads=1, estimator='Landy-Szalay') 
+
+	return gg
+
+def gg_projected_treecorr(pvec2, pvec1, rbins, rvec1, rvec2, options, nbins=6):
 	# Turn the arrays into TreeCorr readable catalogues
 	cat1 = treecorr.Catalog(x=pvec1.T[0], y=pvec1.T[1])
 	cat2 = treecorr.Catalog(x=pvec2.T[0], y=pvec2.T[1])
@@ -103,7 +113,82 @@ def get_randoms(npts, period, bounds=None):
 period={'massiveblackii':100, 'illustris':75}
 measurement_functions = {'gg': gg_3d, 'gg_proj': gg_projected, 'ed': ed_3d, 'ee': ee_3d, 'giplus_proj': gi_plus_projected, 'iiplus_proj': ii_plus_projected}
 
-def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5):
+def bootstrap(correlations, data1, data2, options, verbosity=0, nbins=[6]*5):
+	nsub = options['errors']['nsub']
+	Nb = nsub**3 
+
+	if verbosity>0:
+		print ('Calculating bootstrap errorbars - %d subsamples'%(nsub**3) )
+
+	#fn = measurement_functions[correlation]
+
+	F=[]
+	nprocessed=0
+
+	randoms1 = [get_randoms(data1[d1].size, period[options['simulation']]) for d1 in data1.keys()]
+	randoms2 = [get_randoms(data2[d2].size, period[options['simulation']]) for d2 in data2.keys()]
+
+	for k in range(Nb):
+		
+		dd=[]
+
+		# Process each of the snapshots in turn
+		# The masks and the datavectors are now lists of arrays,
+		# so we need to number the snapshots and use the index t0
+		# look up the correct one
+		for l,s in enumerate(data1.keys()):
+			print('Processing snapshot %d'%s)
+			for c in correlations:
+				print('-- %s'%c)
+				Nd1 = len(data1[s])
+				Nd2 = len(data2[s])
+				indices1 = np.random.choice(Nd1, size=int(Nd1/Nb * (Nb -1)), replace=False)
+				indices2 = np.random.choice(Nd2, size=int(Nd2/Nb * (Nb -1)), replace=False)
+				rindices1 = np.random.choice(len(randoms1[l]), size=int(Nd1/Nb * (Nb -1)), replace=False)
+				rindices2 = np.random.choice(len(randoms2[l]), size=int(Nd2/Nb * (Nb -1)), replace=False)
+				cat1 = data1[s][ indices1 ]
+				cat2 = data2[s][ indices2 ]
+				rcat1 = randoms1[l][ rindices1 ]
+				rcat2 = randoms2[l][ rindices2 ]
+				dd.append(compute(c, cat1, cat2, options, rcat1, rcat2, nbins=nbins[c]))
+
+		F.append(np.concatenate(dd))
+
+		nprocessed+=1
+		if verbosity>0:
+			print ('%d/%d'%(nprocessed,nsub*nsub*nsub))
+
+	if verbosity>0:
+		print( 'Done subsampling.')
+
+	# Now fit together the covariance matrix
+	# should be (obviously) a symmetric matrix of dimension
+	# (\sum nbins, with the sum running over the correlation functions) 
+
+	#import pdb ; pdb.set_trace()
+
+	f0 = np.mean(F, axis=0)
+	cov = np.zeros((len(f0),len(f0)))
+	F = np.array(F)
+
+	np.savetxt('bootstrap-realisations-all.txt', F)
+
+	for i,f1 in enumerate(F.T):
+		m1 = f0[i]
+		for j,f2 in enumerate(F.T):
+			m2 = f0[j]
+			cov[j,i] = np.sum((f1-m1)*(f2-m2))
+
+
+	coeff = (nsub**3 - 1.)/nsub**3
+	cov = coeff * cov
+
+
+	#import pdb ; pdb.set_trace()
+
+	return cov
+
+def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, rank=0, nthread=1):
 	nsub = options['errors']['nsub']
 
 	if verbosity>0:
@@ -121,35 +206,41 @@ def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5):
 	randoms1 = [get_randoms(data1[d1].size, period[options['simulation']]) for d1 in data1.keys()]
 	randoms2 = [get_randoms(data2[d2].size, period[options['simulation']]) for d2 in data2.keys()]
 
+	count = 0
+
 	for i in range(nsub):
 		# x axis box
-		xmask1 = [(data1[d1]['x']<dx*i) | (data1[d1]['x']>dx*(i+1)) for d1 in data1.keys()]
-		xmask2 = [(data2[d2]['x']<dx*i) | (data2[d2]['x']>dx*(i+1)) for d2 in data2.keys()]
-		xmask1_randoms = [(r1['x']<dx*i) | (r1['x']>dx*(i+1)) for r1 in randoms1]
-		xmask2_randoms = [(r2['x']<dx*i) | (r2['x']>dx*(i+1)) for r2 in randoms2]
+		xmask1 =  [(data1[d1]['x']>dx*i) & (data1[d1]['x']<dx*(i+1)) for d1 in data1.keys()]
+		xmask2 =  [(data2[d2]['x']>dx*i) & (data2[d2]['x']<dx*(i+1)) for d2 in data2.keys()]
+		xmask1_randoms = [(r1['x']>dx*i) & (r1['x']<dx*(i+1)) for r1 in randoms1]
+		xmask2_randoms = [(r2['x']>dx*i) & (r2['x']<dx*(i+1)) for r2 in randoms2]
 
 
 		for j in range(nsub):
 			# y axis box
-			ymask1 = [(data1[d1]['y']<dx*i) | (data1[d1]['y']>dx*(i+1)) for d1 in data1.keys()]
-			ymask2 = [(data2[d2]['y']<dx*i) | (data2[d2]['y']>dx*(i+1)) for d2 in data2.keys()]
-			ymask1_randoms = [(r1['y']<dx*i) | (r1['y']>dx*(i+1)) for r1 in randoms1]
-			ymask2_randoms = [(r2['y']<dx*i) | (r2['y']>dx*(i+1)) for r2 in randoms2]
+			ymask1 =  [(data1[d1]['y']>dx*j) & (data1[d1]['y']<dx*(j+1)) for d1 in data1.keys()]
+			ymask2 =  [(data2[d2]['y']>dx*j) & (data2[d2]['y']<dx*(j+1)) for d2 in data2.keys()]
+			ymask1_randoms = [(r1['y']>dx*j) & (r1['y']<dx*(j+1)) for r1 in randoms1]
+			ymask2_randoms = [(r2['y']>dx*j) & (r2['y']<dx*(j+1)) for r2 in randoms2]
 
 
 			for k in range(nsub):
+				count+=1
+				if count%nthread!=rank:
+					continue
+
 				# z axis box
-				zmask1 = [(data1[d1]['z']<dx*i) | (data1[d1]['z']>dx*(i+1)) for d1 in data1.keys()]
-				zmask2 = [(data2[d2]['z']<dx*i) | (data2[d2]['z']>dx*(i+1)) for d2 in data2.keys()]
-				zmask1_randoms = [(r1['z']<dx*i) | (r1['z']>dx*(i+1)) for r1 in randoms1]
-				zmask2_randoms = [(r2['z']<dx*i) | (r2['z']>dx*(i+1)) for r2 in randoms2]
+				zmask1 =  [(data1[d1]['z']>dx*k) & (data1[d1]['z']<dx*(k+1)) for d1 in data1.keys()]
+				zmask2 =  [(data2[d2]['z']>dx*k) & (data2[d2]['z']<dx*(k+1)) for d2 in data2.keys()]
+				zmask1_randoms = [(r1['z']>dx*k) & (r1['z']<dx*(k+1)) for r1 in randoms1]
+				zmask2_randoms = [(r2['z']>dx*k) & (r2['z']<dx*(k+1)) for r2 in randoms2]
 
 
 				# Combined mask for 3D subvolume
-				mask1 = [(x1 & y1 & z1) for x1,y1,z1 in zip(xmask1,ymask1,zmask1)]
-				mask2 = [(x2 & y2 & z2) for x2,y2,z2 in zip(xmask2,ymask2,zmask2)]
-				rmask1 = [(x1 & y1 & z1) for x1,y1,z1 in zip(xmask1_randoms,ymask1_randoms,zmask1_randoms)]
-				rmask2 = [(x2 & y2 & z2) for x2,y2,z2 in zip(xmask2_randoms,ymask2_randoms,zmask2_randoms)]
+				mask1 =  [np.invert(x1 & y1 & z1) for x1,y1,z1 in zip(xmask1,ymask1,zmask1)]
+				mask2 =  [np.invert(x2 & y2 & z2) for x2,y2,z2 in zip(xmask2,ymask2,zmask2)]
+				rmask1 = [np.invert(x1 & y1 & z1) for x1,y1,z1 in zip(xmask1_randoms,ymask1_randoms,zmask1_randoms)]
+				rmask2 = [np.invert(x2 & y2 & z2) for x2,y2,z2 in zip(xmask2_randoms,ymask2_randoms,zmask2_randoms)]
 
 				dd=[]
 
@@ -160,7 +251,7 @@ def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5):
 				for l,s in enumerate(data1.keys()):
 					print('Processing snapshot %d'%s)
 					for c in correlations:
-						print('-- %s'%c)
+						print('-- %s'%c, data1[s][mask1[l]].size)
 						cat1 = data1[s][ mask1[l] ]
 						cat2 = data2[s][ mask2[l] ]
 						rcat1 = randoms1[l][ rmask1[l] ]
@@ -180,23 +271,29 @@ def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5):
 	# should be (obviously) a symmetric matrix of dimension
 	# (\sum nbins, with the sum running over the correlation functions) 
 
-	f0 = np.mean(F, axis=0)
-	cov = np.zeros((len(f0),len(f0)))
+	#import pdb ; pdb.set_trace()
+
+	#f0 = np.mean(F, axis=0)
+	#cov = np.zeros((len(f0),len(f0)))
 	F = np.array(F)
 
-	for i,f1 in enumerate(F.T):
-		m1 = f0[i]
-		for j,f2 in enumerate(F.T):
-			m2 = f0[j]
-			cov[j,i] = np.sum((f1-m1)*(f2-m2))
-
-	coeff = (nsub**3 - 1.)/nsub**3
-	cov = coeff * cov
+	np.savetxt('/Users/hattifattener/Documents/ias/mbii/realisations-all.txt', F)
+#
+#	for i,f1 in enumerate(F.T):
+#		m1 = f0[i]
+#		for j,f2 in enumerate(F.T):
+#			m2 = f0[j]
+#			cov[j,i] = np.sum((f1-m1)*(f2-m2))
+#
+#
+#	coeff = (nsub**3 - 1.)/nsub**3
+#	cov = coeff * cov
 
 
 	#import pdb ; pdb.set_trace()
 
-	return cov
+	#return cov
+	return None
 
 def compute(correlation, cat1, cat2, options, randoms1, randoms2, rbins=None, nbins=6):
 	avec1 = np.vstack((cat1['a1'], cat1['a2'], cat1['a3'])).T

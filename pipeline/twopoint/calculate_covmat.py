@@ -8,12 +8,20 @@ from mbii.pipeline.twopoint.jackknife import covmat as errors
 
 period={'massiveblackii':100, 'illustris':75}
 
-def compute(options, binning, snapshots):
+def compute(options, binning, snapshots, mpi=False):
+
+	if mpi:
+		import mpi4py.MPI
+		rank = mpi4py.MPI.COMM_WORLD.Get_rank()
+		nthread = mpi4py.MPI.COMM_WORLD.Get_size()
+	else:
+		rank = 0
+		nthread = 1
 
 	data = load_catalogues(options, snapshots)
 
-	dc0c0 = errors.jackknife(options['covariance']['ctypes'].split(), data, data, options, nbins=binning)
-	np.savetxt('covmat_all.txt',dc0c0)
+	dc0c0 = errors.jackknife(options['covariance']['ctypes'].split(), data, data, options, nbins=binning, rank=rank, nthread=nthread)
+	#np.savetxt('bootstrap-covmat_all.txt',dc0c0)
 
 	print('Done')
 

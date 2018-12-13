@@ -137,36 +137,36 @@ def compute(correlation, cat1, cat2, options, randoms1, randoms2, nbins=6, rbins
 
 def get_dfrac(correlation, i, j, k, dx, data1, data2, data1_sym, data2_sym, randoms1, randoms2, binning, options):
 	# x axis box
-	xmask1 = (data1['x']<dx*i) | (data1['x']>dx*(i+1))
-	xmask2 = (data2['x']<dx*i) | (data2['x']>dx*(i+1))
-	xmask1_randoms = (randoms1['x']<dx*i) | (randoms1['x']>dx*(i+1))
-	xmask2_randoms = (randoms2['x']<dx*i) | (randoms2['x']>dx*(i+1))
-	xmask1_sym = (data1_sym['x']<dx*i) | (data1_sym['x']>dx*(i+1))
-	xmask2_sym = (data2_sym['x']<dx*i) | (data2_sym['x']>dx*(i+1))
+	xmask1 = (data1['x']>dx*i) & (data1['x']<dx*(i+1))
+	xmask2 = (data2['x']>dx*i) & (data2['x']<dx*(i+1))
+	xmask1_randoms = (randoms1['x']>dx*i) & (randoms1['x']<dx*(i+1))
+	xmask2_randoms = (randoms2['x']>dx*i) & (randoms2['x']<dx*(i+1))
+	xmask1_sym = (data1_sym['x']>dx*i) & (data1_sym['x']<dx*(i+1))
+	xmask2_sym = (data2_sym['x']>dx*i) & (data2_sym['x']<dx*(i+1))
 
 	# y axis box
-	ymask1 = (data1['y']<dx*j) | (data1['y']>dx*(j+1))
-	ymask2 = (data2['y']<dx*j) | (data2['y']>dx*(j+1))
-	ymask1_randoms = (randoms1['y']<dx*j) | (randoms1['y']>dx*(j+1))
-	ymask2_randoms = (randoms2['y']<dx*j) | (randoms2['y']>dx*(j+1))
-	ymask1_sym = (data1_sym['y']<dx*j) | (data1_sym['y']>dx*(j+1))
-	ymask2_sym = (data2_sym['y']<dx*j) | (data2_sym['y']>dx*(j+1))
+	ymask1 = (data1['y']>dx*j) & (data1['y']<dx*(j+1))
+	ymask2 = (data2['y']>dx*j) & (data2['y']<dx*(j+1))
+	ymask1_randoms = (randoms1['y']>dx*j) & (randoms1['y']<dx*(j+1))
+	ymask2_randoms = (randoms2['y']>dx*j) & (randoms2['y']<dx*(j+1))
+	ymask1_sym = (data1_sym['y']>dx*j) & (data1_sym['y']<dx*(j+1))
+	ymask2_sym = (data2_sym['y']>dx*j) & (data2_sym['y']<dx*(j+1))
 
 	# z axis box
-	zmask1 = (data1['z']<dx*k) | (data1['z']>dx*(k+1))
-	zmask2 = (data2['z']<dx*k) | (data2['z']>dx*(k+1))
-	zmask1_randoms = (randoms1['z']<dx*k) | (randoms1['z']>dx*(k+1))
-	zmask2_randoms = (randoms2['z']<dx*k) | (randoms2['z']>dx*(k+1))
-	zmask1_sym = (data1_sym['z']<dx*k) | (data1_sym['z']>dx*(k+1))
-	zmask2_sym = (data2_sym['z']<dx*k) | (data2_sym['z']>dx*(k+1))
+	zmask1 = (data1['z']>dx*k) & (data1['z']<dx*(k+1))
+	zmask2 = (data2['z']>dx*k) & (data2['z']<dx*(k+1))
+	zmask1_randoms = (randoms1['z']>dx*k) & (randoms1['z']<dx*(k+1))
+	zmask2_randoms = (randoms2['z']>dx*k) & (randoms2['z']<dx*(k+1))
+	zmask1_sym = (data1_sym['z']>dx*k) & (data1_sym['z']<dx*(k+1))
+	zmask2_sym = (data2_sym['z']>dx*k) & (data2_sym['z']<dx*(k+1))
 
 	# Combined mask for 3D subvolume
-	mask1 = xmask1 & ymask1 & zmask1
-	mask2 = xmask2 & ymask2 & zmask2
-	rmask1 = xmask1_randoms & ymask1_randoms & zmask1_randoms
-	rmask2 = xmask2_randoms & ymask2_randoms & zmask2_randoms
-	mask1_sym = xmask1_sym & ymask1_sym & zmask1_sym
-	mask2_sym = xmask2_sym & ymask2_sym & zmask2_sym
+	mask1 = np.invert(xmask1 & ymask1 & zmask1)
+	mask2 = np.invert(xmask2 & ymask2 & zmask2)
+	rmask1 = np.invert(xmask1_randoms & ymask1_randoms & zmask1_randoms)
+	rmask2 = np.invert(xmask2_randoms & ymask2_randoms & zmask2_randoms)
+	mask1_sym = np.invert(xmask1_sym & ymask1_sym & zmask1_sym)
+	mask2_sym = np.invert(xmask2_sym & ymask2_sym & zmask2_sym)
 
 	# Do the calculation
 	cat1 = data1[mask1]
