@@ -280,7 +280,7 @@ def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, ran
 	#cov = np.zeros((len(f0),len(f0)))
 	F = np.array(F)
 
-	np.savetxt('realisations-all.txt', F)
+	np.savetxt('realisations-all-%d.txt'%rank, F)
 #
 #	for i,f1 in enumerate(F.T):
 #		m1 = f0[i]
