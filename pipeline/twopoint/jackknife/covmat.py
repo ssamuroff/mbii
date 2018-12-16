@@ -113,9 +113,9 @@ def get_randoms(npts, period, bounds=None):
 period={'massiveblackii':100, 'illustris':75}
 measurement_functions = {'gg': gg_3d, 'gg_proj': gg_projected, 'ed': ed_3d, 'ee': ee_3d, 'giplus_proj': gi_plus_projected, 'iiplus_proj': ii_plus_projected}
 
-def bootstrap(correlations, data1, data2, options, verbosity=0, nbins=[6]*5):
+def bootstrap(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, rank=0, nthread=1):
 	nsub = options['errors']['nsub']
-	Nb = nsub**3 
+	Nb = 3 * nsub**3 
 
 	if verbosity>0:
 		print ('Calculating bootstrap errorbars - %d subsamples'%(nsub**3) )
@@ -125,10 +125,12 @@ def bootstrap(correlations, data1, data2, options, verbosity=0, nbins=[6]*5):
 	F=[]
 	nprocessed=0
 
-	randoms1 = [get_randoms(data1[d1].size, period[options['simulation']]) for d1 in data1.keys()]
-	randoms2 = [get_randoms(data2[d2].size, period[options['simulation']]) for d2 in data2.keys()]
+	randoms1 = [get_randoms(data1[d1].size, period[options['simulation']]) for d1 in revsort(data1.keys())]
+	randoms2 = [get_randoms(data2[d2].size, period[options['simulation']]) for d2 in revsort(data2.keys())]
 
 	for k in range(Nb):
+		if k%nthread!=rank:
+			continue
 		
 		dd=[]
 
@@ -136,7 +138,7 @@ def bootstrap(correlations, data1, data2, options, verbosity=0, nbins=[6]*5):
 		# The masks and the datavectors are now lists of arrays,
 		# so we need to number the snapshots and use the index t0
 		# look up the correct one
-		for l,s in enumerate(data1.keys()):
+		for l,s in enumerate(revsort(data1.keys())):
 			print('Processing snapshot %d'%s)
 			for c in correlations:
 				print('-- %s'%c)
@@ -173,20 +175,20 @@ def bootstrap(correlations, data1, data2, options, verbosity=0, nbins=[6]*5):
 
 	np.savetxt('bootstrap-realisations-all.txt', F)
 
-	for i,f1 in enumerate(F.T):
-		m1 = f0[i]
-		for j,f2 in enumerate(F.T):
-			m2 = f0[j]
-			cov[j,i] = np.sum((f1-m1)*(f2-m2))
-
-
-	coeff = (nsub**3 - 1.)/nsub**3
-	cov = coeff * cov
+#	for i,f1 in enumerate(F.T):
+#		m1 = f0[i]
+#		for j,f2 in enumerate(F.T):
+#			m2 = f0[j]
+#			cov[j,i] = np.sum((f1-m1)*(f2-m2))
+#
+#
+#	coeff = (nsub**3 - 1.)/nsub**3
+#	cov = coeff * cov
 
 
 	#import pdb ; pdb.set_trace()
 
-	return cov
+	return None
 
 def revsort(array):
 	return np.flipud(np.sort(array))
