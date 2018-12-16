@@ -141,9 +141,9 @@ def bootstrap(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, ran
 		for l,s in enumerate(revsort(data1.keys())):
 			print('Processing snapshot %d'%s)
 			for c in correlations:
-				print('-- %s'%c)
 				Nd1 = len(data1[s])
 				Nd2 = len(data2[s])
+				print('-- %s'%c, int(Nd1/Nb * (Nb -1)))
 				indices1 = np.random.choice(Nd1, size=int(Nd1/Nb * (Nb -1)), replace=False)
 				indices2 = np.random.choice(Nd2, size=int(Nd2/Nb * (Nb -1)), replace=False)
 				rindices1 = np.random.choice(len(randoms1[l]), size=int(Nd1/Nb * (Nb -1)), replace=False)
