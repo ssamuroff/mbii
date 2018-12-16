@@ -115,7 +115,7 @@ measurement_functions = {'gg': gg_3d, 'gg_proj': gg_projected, 'ed': ed_3d, 'ee'
 
 def bootstrap(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, rank=0, nthread=1):
 	nsub = options['errors']['nsub']
-	Nb = 3 * nsub**3 
+	Nb = nsub 
 
 	if verbosity>0:
 		print ('Calculating bootstrap errorbars - %d subsamples'%(nsub**3) )
