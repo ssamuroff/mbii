@@ -20,7 +20,13 @@ def compute(options, binning, snapshots, mpi=False):
 
 	data = load_catalogues(options, snapshots)
 
-	dc0c0 = errors.jackknife(options['covariance']['ctypes'].split(), data, data, options, nbins=binning, rank=rank, nthread=nthread)
+	method = options['covariance']['method']
+	if method=='jackknife':
+		fn = errors.jackknife
+	elif method=='bootstrap':
+		fn = errors.bootstrap
+
+	dc0c0 = fn(options['covariance']['ctypes'].split(), data, data, options, nbins=binning, rank=rank, nthread=nthread)
 	#np.savetxt('bootstrap-covmat_all.txt',dc0c0)
 
 	print('Done')
