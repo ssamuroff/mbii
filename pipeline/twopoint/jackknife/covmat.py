@@ -114,7 +114,7 @@ period={'massiveblackii':100, 'illustris':75}
 measurement_functions = {'gg': gg_3d, 'gg_proj': gg_projected, 'ed': ed_3d, 'ee': ee_3d, 'giplus_proj': gi_plus_projected, 'iiplus_proj': ii_plus_projected}
 
 def bootstrap(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, rank=0, nthread=1):
-	nsub = options['errors']['nsub']
+	nsub = options['covariance']['nsub']
 	Nb = nsub 
 
 	if verbosity>0:
@@ -194,7 +194,7 @@ def revsort(array):
 	return np.flipud(np.sort(array))
 
 def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, rank=0, nthread=1):
-	nsub = options['errors']['nsub']
+	nsub = options['covariance']['nsub']
 
 	if verbosity>0:
 		print ('Calculating jackknife errorbars - %dx%d subvolumes'%(nsub,nsub) )
