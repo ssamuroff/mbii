@@ -138,14 +138,15 @@ def bootstrap(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, ran
 		# The masks and the datavectors are now lists of arrays,
 		# so we need to number the snapshots and use the index t0
 		# look up the correct one
+		s = revsort(data1.keys())[0]
+		Nd1 = len(data1[s])
+		Nd2 = len(data2[s])
 		for l,s in enumerate(revsort(data1.keys())):
 			print('Processing snapshot %d'%s)
 			for c in correlations:
-				Nd1 = len(data1[s])
-				Nd2 = len(data2[s])
 				print('-- %s'%c, int(Nd1/Nb * (Nb -1)))
-				indices1 = np.random.choice(Nd1, size=int(Nd1/Nb * (Nb -1)), replace=False)
-				indices2 = np.random.choice(Nd2, size=int(Nd2/Nb * (Nb -1)), replace=False)
+				indices1 = np.random.choice(Nd1, size=int(Nd1/Nb * (Nb -1)), replace=True)
+				indices2 = np.random.choice(Nd2, size=int(Nd2/Nb * (Nb -1)), replace=True)
 				rindices1 = np.random.choice(len(randoms1[l]), size=int(Nd1/Nb * (Nb -1)), replace=False)
 				rindices2 = np.random.choice(len(randoms2[l]), size=int(Nd2/Nb * (Nb -1)), replace=False)
 				cat1 = data1[s][ indices1 ]
