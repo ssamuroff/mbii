@@ -25,6 +25,8 @@ def compute(options, binning, snapshots, mpi=False):
 		fn = errors.jackknife
 	elif method=='bootstrap':
 		fn = errors.bootstrap
+	elif method=='random_rotations':
+		fn = errors.estimate_shape_shot_noise
 
 	dc0c0 = fn(options['covariance']['ctypes'].split(), data, data, options, nbins=binning, rank=rank, nthread=nthread)
 	#np.savetxt('bootstrap-covmat_all.txt',dc0c0)

@@ -12,6 +12,7 @@ from halotools.mock_observables.alignments import gi_plus_projected
 from halotools.mock_observables.alignments import ii_plus_projected
 #import mbii.lego_tools as util
 import scipy.optimize as opt
+import mbii.symmetrise_lib as lib
 
 
 def func(x, a, b):
@@ -192,6 +193,7 @@ def bootstrap(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, ran
 	return None
 
 def revsort(array):
+	array = [elem for elem in array]
 	return np.flipud(np.sort(array))
 
 def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, rank=0, nthread=1):
@@ -302,14 +304,16 @@ def jackknife(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, ran
 	return None
 
 def compute(correlation, cat1, cat2, options, randoms1, randoms2, rbins=None, nbins=6):
-	avec1 = np.vstack((cat1['a1'], cat1['a2'], cat1['a3'])).T
-	avec2 = np.vstack((cat2['a1'], cat2['a2'], cat2['a3'])).T
-	avec1_2d = np.vstack((cat1['a1'], cat1['a2'])).T
-	avec2_2d = np.vstack((cat2['a1'], cat2['a2'])).T
+	if (correlation.lower()!='gg_proj'):
+		avec1 = np.vstack((cat1['a1'], cat1['a2'], cat1['a3'])).T
+		avec2 = np.vstack((cat2['a1'], cat2['a2'], cat2['a3'])).T
+		avec1_2d = np.vstack((cat1['a1'], cat1['a2'])).T
+		avec2_2d = np.vstack((cat2['a1'], cat2['a2'])).T
+		evec1 = np.sqrt(cat1['e1']*cat1['e1'] + cat1['e2']*cat1['e2'])
+		evec2 = np.sqrt(cat2['e1']*cat2['e1'] + cat2['e2']*cat2['e2'])
+
 	pvec1 = np.vstack((cat1['x'], cat1['y'], cat1['z'])).T
 	pvec2 = np.vstack((cat2['x'], cat2['y'], cat2['z'])).T
-	evec1 = np.sqrt(cat1['e1']*cat1['e1'] + cat1['e2']*cat1['e2'])
-	evec2 = np.sqrt(cat2['e1']*cat2['e1'] + cat2['e2']*cat2['e2'])
 
 	rvec1 = np.vstack((randoms1['x'], randoms1['y'], randoms1['z'])).T
 	rvec2 = np.vstack((randoms2['x'], randoms2['y'], randoms2['z'])).T
@@ -388,3 +392,56 @@ def jackknife_treecorr(data1, data2, options, verbosity=0):
 		print( 'Done subsampling.')
 	return np.array(ED).std(axis=0)
 
+
+def estimate_shape_shot_noise(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, rank=0, nthread=1):
+	nsub = options['covariance']['nsub']
+
+	if verbosity>0:
+		print ('Calculating shape noise covariance - %d realisations'%(nsub,nsub) )
+
+	F=[]
+	nprocessed=0
+
+	randoms1 = [get_randoms(data1[d1].size, period[options['simulation']]) for d1 in revsort(data1.keys())]
+	randoms2 = [get_randoms(data2[d2].size, period[options['simulation']]) for d2 in revsort(data2.keys())]
+
+
+
+	for i in range(nsub):
+		if i%nthread!=rank:
+			continue
+
+		dd=[]
+
+		for l,s in enumerate(revsort(data1.keys())):
+			print('Processing snapshot %d'%s)
+			cat1 = data1[s]
+			cat2 = data2[s]
+			cat1 = lib.randomise_shapes(cat1)
+			cat2 = lib.randomise_shapes(cat2)
+
+			r1 = get_randoms(cat1.size, period[options['simulation']])
+			r2 = get_randoms(cat2.size, period[options['simulation']])
+			rcat1 = randoms1[l]
+			rcat2 = randoms2[l]
+
+
+			for c in correlations:
+				print('-- %s'%c, data1[s].size)
+				
+				if c=='gg':
+					dd.append(compute(c, r1, r2, options, rcat1, rcat2, nbins=nbins[c]))
+				else:
+					dd.append(compute(c, cat1, cat2, options, rcat1, rcat2, nbins=nbins[c]))
+
+			F.append(np.concatenate(dd))
+
+			nprocessed+=1
+			if verbosity>0:
+				print ('%d/%d'%(nprocessed,nsub*nsub*nsub))
+
+
+	F = np.array(F)
+	np.savetxt('shape_noise-realisations-all-%d.txt'%rank, F)
+
+	return None

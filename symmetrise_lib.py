@@ -553,3 +553,36 @@ def check_wrapping(i, rot, boxsize=100):
 	return rot
 
 
+def randomise_shapes(cat):
+
+    print('Randomising shapes')
+    for j, row in enumerate(cat):
+        rotated = sample_sphere(1, norm=1, seed=None)
+        rotated = np.array([rotated[0][0], rotated[1][0], rotated[2][0]])
+        pos = np.array([row['a1'], row['a2'], row['a3']])
+
+        rotation_axis, rotation_angle = infer_rotation_angle(pos,rotated)
+        Rxyz = build_rotation_matrix(alpha=rotation_angle, vec=rotation_axis)
+
+        a3d = np.array([row['a1'], row['a2'], row['a3']])
+        b3d = np.array([row['b1'], row['b2'], row['b3']])
+        c3d = np.array([row['c1'], row['c2'], row['c3']])
+        arot = np.dot(Rxyz,a3d)*-1
+        brot = np.dot(Rxyz,b3d)*-1
+        crot = np.dot(Rxyz,c3d)*-1
+        cat['a1'][j] = arot[0]
+        cat['a2'][j] = arot[1]
+        cat['a3'][j] = arot[2]
+        cat['b1'][j] = brot[0]
+        cat['b2'][j] = brot[1]
+        cat['b3'][j] = brot[2]
+        cat['c1'][j] = crot[0]
+        cat['c2'][j] = crot[1]
+        cat['c3'][j] = crot[2]
+
+        cat = project_ellipticities(j, cat, suffix='')
+
+    return cat 
+
+
+
