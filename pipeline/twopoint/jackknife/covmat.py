@@ -175,9 +175,9 @@ def bootstrap(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, ran
 
 	#import pdb ; pdb.set_trace()
 
-	f0 = np.mean(F, axis=0)
-	cov = np.zeros((len(f0),len(f0)))
-	F = np.array(F)
+#	f0 = np.mean(F, axis=0)
+#	cov = np.zeros((len(f0),len(f0)))
+#	F = np.array(F)
 
 #	for i,f1 in enumerate(F.T):
 #		m1 = f0[i]
