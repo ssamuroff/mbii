@@ -26,7 +26,7 @@ def gg_projected(pvec2, pvec1, rbins, rvec1, rvec2, options, nbins=6):
 
 	gg = wp(pvec2, rbins, pi_max, sample2=pvec1, randoms=rvec2, num_threads=1, estimator='Landy-Szalay') 
 
-	if (len(gg.shape)>1):
+	if (len(np.array(gg).shape)>1):
 		gg = gg[1]
 
 	return gg
