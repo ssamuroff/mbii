@@ -26,6 +26,9 @@ def gg_projected(pvec2, pvec1, rbins, rvec1, rvec2, options, nbins=6):
 
 	gg = wp(pvec2, rbins, pi_max, sample2=pvec1, randoms=rvec2, num_threads=1, estimator='Landy-Szalay') 
 
+	if (len(gg.shape)>1):
+		gg = gg[1]
+
 	return gg
 
 def gg_projected_treecorr(pvec2, pvec1, rbins, rvec1, rvec2, options, nbins=6):
@@ -436,12 +439,12 @@ def estimate_shape_shot_noise(correlations, data1, data2, options, verbosity=0, 
 				else:
 					dd.append(compute(c, cat1, cat2, options, rcat1, rcat2, nbins=nbins[c]))
 
-			F = np.concatenate(dd)
-			np.savetxt('shape_noise-realisations-%d-%d.txt'%(i,rank), F)
+		F = np.concatenate(dd)	
+		np.savetxt('shape_noise-realisations-%d-%d.txt'%(i,rank), F)
 
-			nprocessed+=1
-			if verbosity>0:
-				print ('%d/%d'%(nprocessed,nsub*nsub*nsub))
+		nprocessed+=1
+		if verbosity>0:
+			print ('%d/%d'%(nprocessed,nsub*nsub*nsub))
 
 
 
