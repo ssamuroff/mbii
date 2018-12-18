@@ -156,7 +156,8 @@ def bootstrap(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, ran
 				rcat2 = randoms2[l][ rindices2 ]
 				dd.append(compute(c, cat1, cat2, options, rcat1, rcat2, nbins=nbins[c]))
 
-		F.append(np.concatenate(dd))
+		F = np.concatenate(dd)
+		np.savetxt('bootstrap-realisation-%d-%d.txt'%(k,rank), F)
 
 		nprocessed+=1
 		if verbosity>0:
@@ -174,8 +175,6 @@ def bootstrap(correlations, data1, data2, options, verbosity=0, nbins=[6]*5, ran
 	f0 = np.mean(F, axis=0)
 	cov = np.zeros((len(f0),len(f0)))
 	F = np.array(F)
-
-	np.savetxt('bootstrap-realisations-all.txt', F)
 
 #	for i,f1 in enumerate(F.T):
 #		m1 = f0[i]
@@ -325,8 +324,11 @@ def compute(correlation, cat1, cat2, options, randoms1, randoms2, rbins=None, nb
 		
 
 	pi_max = options['2pt']['pi_max']
-	mask1 = (avec1.T[0]!=0.0) & (pvec1.T[0]!=0.0) 
-	mask2 = (avec2.T[0]!=0.0) & (pvec2.T[0]!=0.0) 
+	mask1 = (pvec1.T[0]!=0.0) 
+	mask2 = (pvec2.T[0]!=0.0) 
+	if (correlation.lower()!='gg_proj'):
+		mask1 = mask1 & (avec1.T[0]!=0.0) 
+		mask2 = mask2 & (avec2.T[0]!=0.0)
 
 	fn = measurement_functions[correlation]
 	if (correlation.lower()=='ed'):
@@ -434,14 +436,13 @@ def estimate_shape_shot_noise(correlations, data1, data2, options, verbosity=0, 
 				else:
 					dd.append(compute(c, cat1, cat2, options, rcat1, rcat2, nbins=nbins[c]))
 
-			F.append(np.concatenate(dd))
+			F = np.concatenate(dd)
+			np.savetxt('shape_noise-realisations-%d-%d.txt'%(i,rank), F)
 
 			nprocessed+=1
 			if verbosity>0:
 				print ('%d/%d'%(nprocessed,nsub*nsub*nsub))
 
 
-	F = np.array(F)
-	np.savetxt('shape_noise-realisations-all-%d.txt'%rank, F)
 
 	return None
