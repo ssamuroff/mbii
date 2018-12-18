@@ -431,7 +431,7 @@ def estimate_shape_shot_noise(correlations, data1, data2, options, verbosity=0, 
 			for c in correlations:
 				print('-- %s'%c, data1[s].size)
 				
-				if c=='gg':
+				if 'gg' in c:
 					dd.append(compute(c, r1, r2, options, rcat1, rcat2, nbins=nbins[c]))
 				else:
 					dd.append(compute(c, cat1, cat2, options, rcat1, rcat2, nbins=nbins[c]))
